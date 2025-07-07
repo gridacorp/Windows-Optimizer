@@ -1,11 +1,11 @@
-Optimizador de Windows 11 - Optimización Integral
+## Optimizador de Windows 11 - Optimización Integral
 
 Este script en batch está diseñado para realizar una optimización profunda y personalizada de Windows 11. Desactiva efectos visuales, bloquea la telemetría, elimina servicios y aplicaciones innecesarias (como Microsoft Edge y Xbox), ajusta configuraciones de red, energía y rendimiento, con el objetivo de mejorar significativamente la eficiencia del sistema.
 
 
 ---
 
-🚀 Funcionalidades principales
+### 🚀 Funcionalidades principales
 
 Desactivación de animaciones y efectos visuales.
 
@@ -31,14 +31,10 @@ Eliminación de componentes como Game DVR, Xbox y Windows Defender.
 
 ---
 
-🧩 Uso
+### 🧩 Uso
 
 1. Ejecuta el script como administrador para que todos los cambios se apliquen correctamente.
-
-
 2. Se recomienda crear un punto de restauración del sistema antes de usarlo.
-
-
 3. Lee y comprende cada cambio, ya que algunos pueden afectar funcionalidades del sistema.
 
 
@@ -46,7 +42,7 @@ Eliminación de componentes como Game DVR, Xbox y Windows Defender.
 
 ---
 
-⚠️ Descargo de responsabilidad
+### ⚠️ Descargo de responsabilidad
 
 Este script se proporciona “tal cual”, sin garantías de ningún tipo.
 Su uso es responsabilidad exclusiva del usuario que lo ejecuta o lo distribuye.
@@ -57,8 +53,3 @@ Recomendado solo para usuarios avanzados con pleno conocimiento de las modificac
 ---
 
 Si necesitas ayuda o deseas contribuir, abre un issue o un pull request.
-
-
----
-
-¡Gracias por usar este optimizador!
