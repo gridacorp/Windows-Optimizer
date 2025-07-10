@@ -378,7 +378,9 @@ echo Funciones de Windows Defender deshabilitadas. Es posible que necesites rein
 echo ==============================
 echo 30. ACTUALIZAR TODO EL SOFTWARE
 echo ==============================
+start "" "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" https://www.paypal.com/donate/?hosted_button_id=DMREEX4NSS7V4
 winget upgrade --all
+
 
 
 echo ==============================
