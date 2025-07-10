@@ -371,6 +371,12 @@ sc config WinDefend start= disabled
 echo Funciones de Windows Defender deshabilitadas. Es posible que necesites reiniciar el equipo para que los cambios surtan efecto.
 
 echo ==============================
+echo 30. ACTUALIZAR TODO EL SOFTWARE
+echo ==============================
+winget upgrade --all
+
+
+echo ==============================
 echo 29. DESINSTALAR O DESHABILITAR WIDGETS Y XBOX (CMD SOLAMENTE)
 echo ==============================
 
