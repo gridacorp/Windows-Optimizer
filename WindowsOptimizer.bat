@@ -64,7 +64,12 @@ bcdedit /set {current} disabledynamictick yes
 timeout /t 2 >nul
 
 echo ==============================================================
-echo 5. GESTIÓN DE MICROSOFT EDGE
+echo 5. GESTIÓN DE NAVEGADORES
+echo ============================================================== 
+winget install Brave.Brave --silent --accept-package-agreements --accept-source-agreements
+
+echo ==============================================================
+echo 5.1 GESTIÓN DE MICROSOFT EDGE
 echo ============================================================== 
 setlocal
 rem Obtiene la versión instalada de Microsoft Edge
@@ -101,7 +106,7 @@ echo Microsoft Edge ha sido completamente eliminado.
 
 :: DESINSTALAR MICROSOFT EDGE
 echo ==============================
-echo Eliminando Microsoft Edge...
+echo 5.2 Eliminando Microsoft Edge...
 echo ==============================
 timeout /t 2 >nul
 cd %PROGRAMFILES(X86)%\Microsoft\Edge\Application\*
