@@ -310,32 +310,51 @@ timeout /t 2 >nul
 echo ==============================================================
 echo 27. MEMORIA RAM
 echo ============================================================== 
-@echo off
-REM Este script debe ejecutarse como administrador
+setlocal enabledelayedexpansion
 
-echo Obteniendo la memoria física instalada...
-for /f "skip=1 tokens=1" %%a in ('wmic computersystem get TotalPhysicalMemory') do (
-    set RAM_BYTES=%%a
-    goto Calcula
+REM ——————————————————————————————————————————
+REM 1) Obtener RAM en MB vía PowerShell
+for /f %%A in ('
+  powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+    "[math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory/1MB)"
+') do set RAM_MB=%%A
+
+if "%RAM_MB%"=="" (
+  echo ERROR: no pudo determinarse la RAM.
+  pause & exit /b 1
 )
-:Calcula
-REM Convertir de bytes a megabytes (1 MB = 1048576 bytes)
-set /a RAM_MB=%RAM_BYTES%/1048576
-echo Memoria instalada: %RAM_MB% MB
 
-REM Calcular el tamaño mínimo (1.5 * RAM) y máximo (3 * RAM)
-set /a MIN_SIZE=(RAM_MB*3)/2
+REM ——————————————————————————————————————————
+REM 2) Calcular valores de pagefile
+set /a MIN_SIZE=RAM_MB*3/2
 set /a MAX_SIZE=RAM_MB*3
 
-echo Tamaño de archivo de paginacion:
-echo  Mínimo: %MIN_SIZE% MB
-echo  Máximo: %MAX_SIZE% MB
+echo Memoria detectada: %RAM_MB% MB
+echo Fijando pagefile en C:\pagefile.sys:
+echo   Min = %MIN_SIZE% MB
+echo   Max = %MAX_SIZE% MB
+echo.
 
-echo Desactivando la administracion automatica del archivo de paginacion...
-wmic computersystem where name="%computername%" set AutomaticManagedPagefile=False
+REM ——————————————————————————————————————————
+REM 3) Desactivar administración automática en registro
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" ^
+    /v AutomaticManagedPagefile /t REG_DWORD /d 0 /f >nul 2>&1
+if errorlevel 1 (
+  echo ERROR: no se pudo desactivar AutomaticManagedPagefile.
+  pause & exit /b 1
+)
 
-echo Configurando el archivo de paginacion en C:\pagefile.sys...
-wmic pagefileset where name="C:\\pagefile.sys" set InitialSize=%MIN_SIZE%,MaximumSize=%MAX_SIZE%
+REM ——————————————————————————————————————————
+REM 4) Escribir los valores de pagefile en registro
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" ^
+    /v PagingFiles /t REG_MULTI_SZ /d "C:\pagefile.sys %MIN_SIZE% %MAX_SIZE%" /f >nul 2>&1
+if errorlevel 1 (
+  echo ERROR: no se pudo escribir PagingFiles.
+  pause & exit /b 1
+)
+
+echo [✔] Registro actualizado.  
+
 
 echo ==============================================================
 echo 28. DEFENDER
@@ -387,9 +406,17 @@ echo ==============================
 echo 29. DESINSTALAR O DESHABILITAR WIDGETS Y XBOX (CMD SOLAMENTE)
 echo ==============================
 
-:: Desactivar Widgets desde el registro
-echo Desactivando los Widgets...
+:: Desactivar Widgets desde el registro (barra de tareas)
+echo Desactivando los Widgets desde la barra de tareas...
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v TaskbarDa /t REG_DWORD /d 0 /f
+
+:: Desactivar Widgets desde políticas (evita reinstalación)
+echo Bloqueando Widgets mediante políticas...
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Dsh" /v AllowNewsAndInterests /t REG_DWORD /d 0 /f
+
+:: Desinstalar Windows Web Experience Pack (Widgets backend)
+echo Desinstalando Windows Web Experience Pack (Widgets)...
+powershell -Command "Get-AppxPackage *WebExperience* | Remove-AppxPackage"
 
 :: Reiniciar el Explorador para aplicar el cambio
 echo Reiniciando el Explorador de Windows...
@@ -405,9 +432,11 @@ DISM /Online /Remove-ProvisionedAppxPackage /PackageName:Microsoft.GamingApp_*
 
 timeout /t 2 >nul
 
+
 echo ==============================
 echo Optimización completada.
 echo ==============================
+echo Es recomendable reiniciar el equipo para aplicar los cambios.
 echo Presiona cualquier tecla para salir...
 pause >nul
 exit
