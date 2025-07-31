@@ -432,6 +432,154 @@ DISM /Online /Remove-ProvisionedAppxPackage /PackageName:Microsoft.GamingApp_*
 
 timeout /t 2 >nul
 
+@echo off
+title Eliminando Bloatware en Windows 11
+cls
+
+:: Verifica privilegios de administrador
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Este script debe ejecutarse como Administrador.
+    pause
+    exit /b
+)
+
+echo ==================================================
+echo 30.        INICIANDO LIMPIEZA DE BLOATWARE     ===
+echo ==================================================
+echo.
+
+:: Ejecutar comandos PowerShell desde CMD para eliminar apps
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+" $apps = @(
+    'Microsoft.3DBuilder',
+    'Microsoft.XboxApp',
+    'Microsoft.XboxGameOverlay',
+    'Microsoft.XboxGamingOverlay',
+    'Microsoft.XboxIdentityProvider',
+    'Microsoft.XboxSpeechToTextOverlay',
+    'Microsoft.BingWeather',
+    'Microsoft.GetHelp',
+    'Microsoft.Getstarted',
+    'Microsoft.MicrosoftOfficeHub',
+    'Microsoft.MicrosoftSolitaireCollection',
+    'Microsoft.MixedReality.Portal',
+    'Microsoft.People',
+    'Microsoft.SkypeApp',
+    'Microsoft.Todos',
+    'Microsoft.ZuneMusic',
+    'Microsoft.ZuneVideo',
+    'Microsoft.WindowsMaps',
+    'Microsoft.WindowsFeedbackHub',
+    'Microsoft.Microsoft3DViewer',
+    'Microsoft.MicrosoftStickyNotes',
+    'Microsoft.OneConnect'
+);
+foreach ($app in $apps) {
+    Write-Output \"Eliminando $app (usuario actual)...\";
+    Get-AppxPackage -Name $app | Remove-AppxPackage -ErrorAction SilentlyContinue;
+    Write-Output \"Eliminando $app (provisionado)...\";
+    Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -eq $app } | Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue;
+};
+Write-Output 'Limpieza completada.'"
+
+
+echo =============================================
+echo 31.     OPTIMIZADOR DE MEMORIA RAM LIGERO
+echo =============================================
+
+:: DETECTAR RAM INSTALADA
+for /f "skip=1 tokens=2 delims==" %%a in ('wmic ComputerSystem get TotalPhysicalMemory /value') do (
+    set /a RAM_MB=%%a / 1024 / 1024
+    goto :gotram
+)
+:gotram
+echo RAM detectada: %RAM_MB% MB
+echo.
+
+:: =============================================
+:: 32. MANTENER COMPRESIÓN DE MEMORIA ACTIVADA
+:: =============================================
+echo La compresión de memoria se mantiene activada para no afectar multitarea.
+echo.
+
+:: =============================================
+:: 33. DESHABILITAR SERVICIOS INNECESARIOS
+:: =============================================
+echo Deshabilitando servicios innecesarios...
+
+sc config DiagTrack start= disabled >nul 2>&1
+sc stop DiagTrack >nul 2>&1
+
+sc config dmwappushservice start= disabled >nul 2>&1
+sc stop dmwappushservice >nul 2>&1
+
+sc config XblAuthManager start= disabled >nul 2>&1
+sc stop XblAuthManager >nul 2>&1
+
+sc config XblGameSave start= disabled >nul 2>&1
+sc stop XblGameSave >nul 2>&1
+
+sc config XboxNetApiSvc start= disabled >nul 2>&1
+sc stop XboxNetApiSvc >nul 2>&1
+
+sc config WdiServiceHost start= disabled >nul 2>&1
+sc stop WdiServiceHost >nul 2>&1
+
+sc config WdiSystemHost start= disabled >nul 2>&1
+sc stop WdiSystemHost >nul 2>&1
+
+echo Servicios desactivados.
+echo.
+
+:: =============================================
+:: 34. DESHABILITAR WIDGETS Y COMPONENTES LIGEROS
+:: =============================================
+echo Deshabilitando Widgets y WebExperience...
+
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v TaskbarDa /t REG_DWORD /d 0 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Dsh" /v AllowNewsAndInterests /t REG_DWORD /d 0 /f
+powershell -Command "Get-AppxPackage *WebExperience* | Remove-AppxPackage"
+
+echo Widgets eliminados.
+echo.
+
+:: =============================================
+:: 35. OPTIMIZAR EFECTOS VISUALES (SIN BORRAR FONDO)
+:: =============================================
+echo Aplicando tema visual ligero (transparencia y animaciones)...
+
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v EnableTransparency /t REG_DWORD /d 0 /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v AppsUseLightTheme /t REG_DWORD /d 0 /f
+reg add "HKCU\Control Panel\Desktop\WindowMetrics" /v MinAnimate /t REG_SZ /d 0 /f
+
+echo Tema visual optimizado. El fondo de pantalla no se modifica.
+echo.
+
+:: =============================================
+:: 36. LIMPIAR PROGRAMAS DE INICIO AUTOMÁTICO
+:: =============================================
+echo Limpiando inicio automático innecesario...
+
+reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /f >nul 2>&1
+reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" /f >nul 2>&1
+reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" /f >nul 2>&1
+
+echo Programas de inicio limpiados.
+echo.
+
+:: =============================================
+:: 37. FORZAR USO DE HIBERNACIÓN EN LUGAR DE SUSPENSIÓN
+:: =============================================
+echo Activando hibernación como modo preferido de reposo...
+
+powercfg -hibernate on
+powercfg /change standby-timeout-ac 0
+powercfg /change standby-timeout-dc 0
+
+echo Hibernación activada.
+echo.
+
 
 echo ==============================
 echo Optimización completada.
