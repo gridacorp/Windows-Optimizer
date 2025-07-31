@@ -449,39 +449,43 @@ echo 30.        INICIANDO LIMPIEZA DE BLOATWARE     ===
 echo ==================================================
 echo.
 
-:: Ejecutar comandos PowerShell desde CMD para eliminar apps
+:: Ejecutar PowerShell para eliminar apps innecesarias
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-" $apps = @(
-    'Microsoft.3DBuilder',
-    'Microsoft.XboxApp',
-    'Microsoft.XboxGameOverlay',
-    'Microsoft.XboxGamingOverlay',
-    'Microsoft.XboxIdentityProvider',
-    'Microsoft.XboxSpeechToTextOverlay',
-    'Microsoft.BingWeather',
-    'Microsoft.GetHelp',
-    'Microsoft.Getstarted',
-    'Microsoft.MicrosoftOfficeHub',
-    'Microsoft.MicrosoftSolitaireCollection',
-    'Microsoft.MixedReality.Portal',
-    'Microsoft.People',
-    'Microsoft.SkypeApp',
-    'Microsoft.Todos',
-    'Microsoft.ZuneMusic',
-    'Microsoft.ZuneVideo',
-    'Microsoft.WindowsMaps',
-    'Microsoft.WindowsFeedbackHub',
-    'Microsoft.Microsoft3DViewer',
-    'Microsoft.MicrosoftStickyNotes',
-    'Microsoft.OneConnect'
-);
-foreach ($app in $apps) {
-    Write-Output \"Eliminando $app (usuario actual)...\";
-    Get-AppxPackage -Name $app | Remove-AppxPackage -ErrorAction SilentlyContinue;
-    Write-Output \"Eliminando $app (provisionado)...\";
-    Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -eq $app } | Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue;
-};
-Write-Output 'Limpieza completada.'"
+"$apps = @(
+  'Microsoft.3DBuilder',
+  'Microsoft.XboxApp',
+  'Microsoft.XboxGameOverlay',
+  'Microsoft.XboxGamingOverlay',
+  'Microsoft.XboxIdentityProvider',
+  'Microsoft.XboxSpeechToTextOverlay',
+  'Microsoft.BingWeather',
+  'Microsoft.GetHelp',
+  'Microsoft.Getstarted',
+  'Microsoft.MicrosoftOfficeHub',
+  'Microsoft.MicrosoftSolitaireCollection',
+  'Microsoft.MixedReality.Portal',
+  'Microsoft.People',
+  'Microsoft.SkypeApp',
+  'Microsoft.Todos',
+  'Microsoft.ZuneMusic',
+  'Microsoft.ZuneVideo',
+  'Microsoft.WindowsMaps',
+  'Microsoft.WindowsFeedbackHub',
+  'Microsoft.Microsoft3DViewer',
+  'Microsoft.MicrosoftStickyNotes',
+  'Microsoft.OneConnect'
+); foreach ($app in $apps) {
+  Write-Output \"Eliminando $app (usuario actual)...\";
+  Get-AppxPackage -Name $app | Remove-AppxPackage -ErrorAction SilentlyContinue;
+  Write-Output \"Eliminando $app (provisionado)...\";
+  Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -eq $app } | Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue;
+}; Write-Output 'Limpieza completada.'"
+
+:: Verificar si hubo error
+if errorlevel 1 (
+    echo Ocurrió un error durante la limpieza de bloatware.
+    pause
+)
 
 
 echo =============================================
