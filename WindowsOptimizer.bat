@@ -449,8 +449,8 @@ echo 30.        INICIANDO LIMPIEZA DE BLOATWARE     ===
 echo ==================================================
 echo.
 
-:: Ejecutar PowerShell para eliminar apps innecesarias
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+:: Ejecutar PowerShell para eliminar aplicaciones innecesarias
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
 "$apps = @(
   'Microsoft.3DBuilder',
   'Microsoft.XboxApp',
@@ -475,18 +475,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   'Microsoft.MicrosoftStickyNotes',
   'Microsoft.OneConnect'
 ); foreach ($app in $apps) {
-  Write-Output \"Eliminando $app (usuario actual)...\";
+  Write-Host 'Eliminando' $app ' (usuario actual)...';
   Get-AppxPackage -Name $app | Remove-AppxPackage -ErrorAction SilentlyContinue;
-  Write-Output \"Eliminando $app (provisionado)...\";
+  Write-Host 'Eliminando' $app ' (provisionado)...';
   Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -eq $app } | Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue;
-}; Write-Output 'Limpieza completada.'"
+}; Write-Host 'Limpieza completada.'"
 
-:: Verificar si hubo error
-if errorlevel 1 (
-    echo Ocurrió un error durante la limpieza de bloatware.
+if %errorlevel% NEQ 0 (
+    echo Hubo un error durante la limpieza.
     pause
 )
-
 
 echo =============================================
 echo 31.     OPTIMIZADOR DE MEMORIA RAM LIGERO
