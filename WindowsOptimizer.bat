@@ -394,13 +394,6 @@ sc config WinDefend start= disabled
 
 echo Funciones de Windows Defender deshabilitadas. Es posible que necesites reiniciar el equipo para que los cambios surtan efecto.
 
-echo ==============================
-echo 30. ACTUALIZAR TODO EL SOFTWARE
-echo ==============================
-start "" "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" https://www.paypal.com/donate/?hosted_button_id=DMREEX4NSS7V4
-winget upgrade --all
-
-
 
 echo ==============================
 echo 29. DESINSTALAR O DESHABILITAR WIDGETS Y XBOX (CMD SOLAMENTE)
@@ -444,47 +437,11 @@ if %errorlevel% neq 0 (
     exit /b
 )
 
-echo ==================================================
-echo 30.        INICIANDO LIMPIEZA DE BLOATWARE     ===
-echo ==================================================
-echo.
-
-:: Ejecutar PowerShell para eliminar aplicaciones innecesarias
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
-"$apps = @(
-  'Microsoft.3DBuilder',
-  'Microsoft.XboxApp',
-  'Microsoft.XboxGameOverlay',
-  'Microsoft.XboxGamingOverlay',
-  'Microsoft.XboxIdentityProvider',
-  'Microsoft.XboxSpeechToTextOverlay',
-  'Microsoft.BingWeather',
-  'Microsoft.GetHelp',
-  'Microsoft.Getstarted',
-  'Microsoft.MicrosoftOfficeHub',
-  'Microsoft.MicrosoftSolitaireCollection',
-  'Microsoft.MixedReality.Portal',
-  'Microsoft.People',
-  'Microsoft.SkypeApp',
-  'Microsoft.Todos',
-  'Microsoft.ZuneMusic',
-  'Microsoft.ZuneVideo',
-  'Microsoft.WindowsMaps',
-  'Microsoft.WindowsFeedbackHub',
-  'Microsoft.Microsoft3DViewer',
-  'Microsoft.MicrosoftStickyNotes',
-  'Microsoft.OneConnect'
-); foreach ($app in $apps) {
-  Write-Host 'Eliminando' $app ' (usuario actual)...';
-  Get-AppxPackage -Name $app | Remove-AppxPackage -ErrorAction SilentlyContinue;
-  Write-Host 'Eliminando' $app ' (provisionado)...';
-  Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -eq $app } | Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue;
-}; Write-Host 'Limpieza completada.'"
-
-if %errorlevel% NEQ 0 (
-    echo Hubo un error durante la limpieza.
-    pause
-)
+echo ==============================
+echo 30. ACTUALIZAR TODO EL SOFTWARE
+echo ==============================
+start https://www.paypal.com/donate/?hosted_button_id=DMREEX4NSS7V4
+winget upgrade --all
 
 echo =============================================
 echo 31.     OPTIMIZADOR DE MEMORIA RAM LIGERO
