@@ -444,27 +444,8 @@ start https://www.paypal.com/donate/?hosted_button_id=DMREEX4NSS7V4
 winget upgrade --all
 
 echo =============================================
-echo 31.     OPTIMIZADOR DE MEMORIA RAM LIGERO
+echo 31. DESHABILITAR SERVICIOS INNECESARIOS
 echo =============================================
-
-:: DETECTAR RAM INSTALADA
-for /f "skip=1 tokens=2 delims==" %%a in ('wmic ComputerSystem get TotalPhysicalMemory /value') do (
-    set /a RAM_MB=%%a / 1024 / 1024
-    goto :gotram
-)
-:gotram
-echo RAM detectada: %RAM_MB% MB
-echo.
-
-:: =============================================
-:: 32. MANTENER COMPRESIÓN DE MEMORIA ACTIVADA
-:: =============================================
-echo La compresión de memoria se mantiene activada para no afectar multitarea.
-echo.
-
-:: =============================================
-:: 33. DESHABILITAR SERVICIOS INNECESARIOS
-:: =============================================
 echo Deshabilitando servicios innecesarios...
 
 sc config DiagTrack start= disabled >nul 2>&1
@@ -491,9 +472,9 @@ sc stop WdiSystemHost >nul 2>&1
 echo Servicios desactivados.
 echo.
 
-:: =============================================
-:: 34. DESHABILITAR WIDGETS Y COMPONENTES LIGEROS
-:: =============================================
+echo =============================================
+echo 32. DESHABILITAR WIDGETS Y COMPONENTES LIGEROS
+echo =============================================
 echo Deshabilitando Widgets y WebExperience...
 
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v TaskbarDa /t REG_DWORD /d 0 /f
@@ -503,9 +484,9 @@ powershell -Command "Get-AppxPackage *WebExperience* | Remove-AppxPackage"
 echo Widgets eliminados.
 echo.
 
-:: =============================================
-:: 35. OPTIMIZAR EFECTOS VISUALES (SIN BORRAR FONDO)
-:: =============================================
+echo =============================================
+echo 33. OPTIMIZAR EFECTOS VISUALES (SIN BORRAR FONDO)
+echo =============================================
 echo Aplicando tema visual ligero (transparencia y animaciones)...
 
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v EnableTransparency /t REG_DWORD /d 0 /f
@@ -515,9 +496,9 @@ reg add "HKCU\Control Panel\Desktop\WindowMetrics" /v MinAnimate /t REG_SZ /d 0 
 echo Tema visual optimizado. El fondo de pantalla no se modifica.
 echo.
 
-:: =============================================
-:: 36. LIMPIAR PROGRAMAS DE INICIO AUTOMÁTICO
-:: =============================================
+echo =============================================
+echo 34. LIMPIAR PROGRAMAS DE INICIO AUTOMÁTICO
+echo =============================================
 echo Limpiando inicio automático innecesario...
 
 reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /f >nul 2>&1
@@ -527,9 +508,9 @@ reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupAppro
 echo Programas de inicio limpiados.
 echo.
 
-:: =============================================
-:: 37. FORZAR USO DE HIBERNACIÓN EN LUGAR DE SUSPENSIÓN
-:: =============================================
+echo =============================================
+echo 35. FORZAR USO DE HIBERNACIÓN EN LUGAR DE SUSPENSIÓN
+echo =============================================
 echo Activando hibernación como modo preferido de reposo...
 
 powercfg -hibernate on
@@ -539,6 +520,39 @@ powercfg /change standby-timeout-dc 0
 echo Hibernación activada.
 echo.
 
+echo ----------------------------
+echo 36. Eliminando Bloatware...
+echo ----------------------------
+
+:: Ejecutar PowerShell desde CMD para desinstalar apps
+
+powershell -Command "Get-AppxPackage *3DBuilder* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *ZuneMusic* | Remove-AppxPackage"      :: Groove Música
+powershell -Command "Get-AppxPackage *ZuneVideo* | Remove-AppxPackage"      :: Películas y TV
+powershell -Command "Get-AppxPackage *XboxApp* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.XboxGamingOverlay* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.Xbox.TCUI* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.XboxGameOverlay* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.BingNews* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.GetHelp* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.Getstarted* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.MicrosoftSolitaireCollection* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.People* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.SkypeApp* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.MicrosoftOfficeHub* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.Todos* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.WindowsAlarms* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.WindowsFeedbackHub* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.WindowsMaps* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.WindowsSoundRecorder* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.YourPhone* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.MicrosoftStickyNotes* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.OneConnect* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.Wallet* | Remove-AppxPackage"
+
+echo ----------------------------
+echo Bloatware eliminado.
+echo ----------------------------
 
 echo ==============================
 echo Optimización completada.
