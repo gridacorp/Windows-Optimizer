@@ -437,14 +437,8 @@ if %errorlevel% neq 0 (
     exit /b
 )
 
-echo ==============================
-echo 30. ACTUALIZAR TODO EL SOFTWARE
-echo ==============================
-start https://www.paypal.com/donate/?hosted_button_id=DMREEX4NSS7V4
-winget upgrade --all
-
 echo =============================================
-echo 31. DESHABILITAR SERVICIOS INNECESARIOS
+echo 30. DESHABILITAR SERVICIOS INNECESARIOS
 echo =============================================
 echo Deshabilitando servicios innecesarios...
 
@@ -473,7 +467,7 @@ echo Servicios desactivados.
 echo.
 
 echo =============================================
-echo 32. DESHABILITAR WIDGETS Y COMPONENTES LIGEROS
+echo 31. DESHABILITAR WIDGETS Y COMPONENTES LIGEROS
 echo =============================================
 echo Deshabilitando Widgets y WebExperience...
 
@@ -485,19 +479,21 @@ echo Widgets eliminados.
 echo.
 
 echo =============================================
-echo 33. OPTIMIZAR EFECTOS VISUALES (SIN BORRAR FONDO)
+echo 32. OPTIMIZAR EFECTOS VISUALES (SIN BORRAR FONDO)
 echo =============================================
 echo Aplicando tema visual ligero (transparencia y animaciones)...
 
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v EnableTransparency /t REG_DWORD /d 0 /f
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v AppsUseLightTheme /t REG_DWORD /d 0 /f
 reg add "HKCU\Control Panel\Desktop\WindowMetrics" /v MinAnimate /t REG_SZ /d 0 /f
+reg add "HKCU\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\Bags\AllFolders\Shell" /v FolderType /t REG_SZ /d NotSpecified /f
+
 
 echo Tema visual optimizado. El fondo de pantalla no se modifica.
 echo.
 
 echo =============================================
-echo 34. LIMPIAR PROGRAMAS DE INICIO AUTOMÁTICO
+echo 33. LIMPIAR PROGRAMAS DE INICIO AUTOMÁTICO
 echo =============================================
 echo Limpiando inicio automático innecesario...
 
@@ -509,7 +505,7 @@ echo Programas de inicio limpiados.
 echo.
 
 echo =============================================
-echo 35. FORZAR USO DE HIBERNACIÓN EN LUGAR DE SUSPENSIÓN
+echo 34. FORZAR USO DE HIBERNACIÓN EN LUGAR DE SUSPENSIÓN
 echo =============================================
 echo Activando hibernación como modo preferido de reposo...
 
@@ -520,12 +516,46 @@ powercfg /change standby-timeout-dc 0
 echo Hibernación activada.
 echo.
 
+
+echo ============================================
+echo 36. Reparacion de Disco Duro y Sectores
+echo ============================================
+echo.
+
+echo Si la unidad C: esta en uso,
+echo el script confirmara automaticamente (Y).
+echo
+
+:: Ejecuta CHKDSK y responde "Y" automaticamente
+echo Y|chkdsk C: /F /R /X
+
+echo
+echo ============================================
+echo CHKDSK se ejecuto y quedo programado.
+echo ============================================
+echo
+
+echo ==============================
+echo 37. ACTUALIZAR TODO EL SOFTWARE
+echo ==============================
+start https://www.paypal.com/donate/?hosted_button_id=DMREEX4NSS7V4
+winget upgrade --all
+
+
 echo ----------------------------
-echo 36. Eliminando Bloatware...
+echo 35. Eliminando Bloatware...
 echo ----------------------------
+
+echo ----- Bloqueando reinstalación -----
+reg add "HKLM\SOFTWARE\Policies\Microsoft\WindowsStore" /v AutoDownload /t REG_DWORD /d 2 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\WindowsStore" /v DisableStoreApps /t REG_DWORD /d 1 /f
+
+echo ----- Eliminando Game Bar desde políticas -----
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR" /v AllowGameDVR /t REG_DWORD /d 0 /f
+reg add "HKLM\SOFTWARE\Microsoft\Windows\GameDVR" /v AllowGameDVR /t REG_DWORD /d 0 /f
+
 
 :: Ejecutar PowerShell desde CMD para desinstalar apps
-
 powershell -Command "Get-AppxPackage *3DBuilder* | Remove-AppxPackage"
 powershell -Command "Get-AppxPackage *ZuneMusic* | Remove-AppxPackage"      :: Groove Música
 powershell -Command "Get-AppxPackage *ZuneVideo* | Remove-AppxPackage"      :: Películas y TV
@@ -549,6 +579,15 @@ powershell -Command "Get-AppxPackage *Microsoft.YourPhone* | Remove-AppxPackage"
 powershell -Command "Get-AppxPackage *Microsoft.MicrosoftStickyNotes* | Remove-AppxPackage"
 powershell -Command "Get-AppxPackage *Microsoft.OneConnect* | Remove-AppxPackage"
 powershell -Command "Get-AppxPackage *Microsoft.Wallet* | Remove-AppxPackage"
+
+powershell -Command "Get-AppxPackage *XboxGamingOverlay* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *XboxGameCallableUI* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *XboxIdentityProvider* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.GamingApp* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *XboxSpeechToTextOverlay* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.Xbox.TCUI* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.XboxGameOverlay* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage *Microsoft.XboxGamingOverlay* | Remove-AppxPackage"
 
 echo ----------------------------
 echo Bloatware eliminado.
