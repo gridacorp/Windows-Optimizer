@@ -66,7 +66,9 @@ timeout /t 2 >nul
 echo ==============================================================
 echo 5. GESTIÓN DE NAVEGADORES
 echo ============================================================== 
-winget install Brave.Brave --silent --accept-package-agreements --accept-source-agreements
+#winget install Brave.Brave --silent --accept-package-agreements --accept-source-agreements
+powershell -Command "if (-Not (Test-Path 'C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe')) { Start-Process 'https://laptop-updates.brave.com/latest/winx64' -Wait }"
+
 
 echo ==============================================================
 echo 5.1 GESTIÓN DE MICROSOFT EDGE
@@ -462,6 +464,9 @@ sc stop WdiServiceHost >nul 2>&1
 
 sc config WdiSystemHost start= disabled >nul 2>&1
 sc stop WdiSystemHost >nul 2>&1
+
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "AutoCheckSelect" /t REG_DWORD /d 0 /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "FolderType" /t REG_SZ /d "NotSpecified" /f
 
 echo Servicios desactivados.
 echo.
