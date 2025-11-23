@@ -7,6 +7,8 @@ echo Iniciando optimización de Windows 11...
 echo ==============================
 timeout /t 3 >nul
 
+powershell -Command "Checkpoint-Computer -Description 'Antes de optimización' -RestorePointType MODIFY_SETTINGS"
+
 echo ==============================================================
 echo 1. DESACTIVAR EFECTOS VISUALES Y ANIMACIONES
 echo ============================================================== 
