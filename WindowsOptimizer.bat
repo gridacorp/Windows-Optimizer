@@ -35,12 +35,10 @@ sc stop dmwappushservice
 sc config dmwappushservice start= disabled
 sc stop WdiServiceHost
 sc config WdiServiceHost start= disabled
-sc stop NlaSvc
-sc config NlaSvc start= disabled
+#sc stop NlaSvc
+#sc config NlaSvc start= disabled
 sc stop PcaSvc
 sc config PcaSvc start= disabled
-sc stop Wecsvc
-sc config Wecsvc start= disabled
 sc stop WerSvc
 sc config WerSvc start= disabled
 
@@ -66,9 +64,7 @@ timeout /t 2 >nul
 echo ==============================================================
 echo 5. GESTIÓN DE NAVEGADORES
 echo ============================================================== 
-#winget install Brave.Brave --silent --accept-package-agreements --accept-source-agreements
-powershell -Command "if (-Not (Test-Path 'C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe')) { Start-Process 'https://laptop-updates.brave.com/latest/winx64' -Wait }"
-
+winget install Brave.Brave --silent --accept-package-agreements --accept-source-agreements
 
 echo ==============================================================
 echo 5.1 GESTIÓN DE MICROSOFT EDGE
@@ -235,12 +231,26 @@ reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization" /v "NoBa
 timeout /t 2 >nul
 
 echo ==============================================================
-echo 18. OPTIMIZAR BUFFERS TCP/IP Y DESHABILITAR AUTOAJUSTE DE VENTANA TCP
+echo 18. Gestión inteligente de procesos
 echo ============================================================== 
-echo Optimizando buffers TCP/IP y deshabilitando autoajuste de ventana TCP...
-netsh int tcp set global autotuninglevel=disabled
-netsh int tcp set global rss=enabled
-timeout /t 2 >nul
+:: Establecer prioridad de procesos críticos (seguro y reversible)
+wmic process where name="explorer.exe" CALL setpriority "high priority"
+wmic process where name="dwm.exe" CALL setpriority "high priority"
+wmic process where name="System" CALL setpriority "realtime"
+:: Limitar procesos en segundo plano no esenciales
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications" /v "GlobalUserDisabled" /t REG_DWORD /d 0 /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications" /v "DisableBackgroundApps" /t REG_DWORD /d 1 /f
+:: Habilitar SysMain (anteriormente SuperFetch) para SSDs
+sc config "SysMain" start= auto
+sc start "SysMain"
+:: Configurar caché de inicio para aplicaciones frecuentes
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VolumeCaches\Startup Apps" /v "Autorun" /t REG_DWORD /d 1 /f
+:: Optimizar caché de almacenamiento
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "IoPageLockLimit" /t REG_DWORD /d 268435456 /f
+:: Limpiar caché de Windows sin afectar actualizaciones
+DISM /Online /Cleanup-Image /StartComponentCleanup /ResetBase
+:: Limpiar caché de WinSxS seguro
+DISM /Online /Cleanup-Image /SPSuperseded
 
 echo ==============================================================
 echo 19. DESHABILITAR O AJUSTAR SERVICIOS INNECESARIOS
@@ -269,12 +279,17 @@ timeout /t 2 >nul
 echo ==============================================================
 echo 22. AJUSTES AVANZADOS DE RED
 echo ============================================================== 
-echo Ajustando configuraciones avanzadas de red...
-echo Opcional: Deshabilitar IPv6 (puede afectar conexiones en ciertos entornos)
+echo Optimizando buffers TCP/IP
+netsh int tcp set global rss=enabled
+timeout /t 2 >nul
+echo Deshabilitar IPv6
 reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters" /v "DisabledComponents" /t REG_DWORD /d 255 /f
 echo Ajustar el algoritmo de congestión (por ejemplo, CTCP)
 netsh int tcp set global congestionprovider=ctcp
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /v "AutoDetect" /t REG_DWORD /d 0 /f
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "LargeSystemCache" /t REG_DWORD /d 1 /f
 timeout /t 2 >nul
+
 
 echo ==============================================================
 echo 23. DESHABILITAR ACTUALIZACIONES AUTOMÁTICAS DE DRIVERS Y WINDOWS STORE
@@ -465,9 +480,6 @@ sc stop WdiServiceHost >nul 2>&1
 sc config WdiSystemHost start= disabled >nul 2>&1
 sc stop WdiSystemHost >nul 2>&1
 
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "AutoCheckSelect" /t REG_DWORD /d 0 /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "FolderType" /t REG_SZ /d "NotSpecified" /f
-
 echo Servicios desactivados.
 echo.
 
@@ -526,6 +538,8 @@ echo ============================================
 echo 36. Reparacion de Disco Duro y Sectores
 echo ============================================
 echo.
+:: Optimizar unidades sin dañar SSDs
+opt /C /H /Z
 
 echo Si la unidad C: esta en uso,
 echo el script confirmara automaticamente (Y).
@@ -533,6 +547,11 @@ echo
 
 :: Ejecuta CHKDSK y responde "Y" automaticamente
 echo Y|chkdsk C: /F /R /X
+
+:: Habilitar TRIM automático para SSDs (mejora vida útil y velocidad)
+fsutil behavior set disabledeletenotify 0
+
+
 
 echo
 echo ============================================
