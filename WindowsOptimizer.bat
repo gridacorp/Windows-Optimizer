@@ -300,7 +300,6 @@ reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /v "A
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "LargeSystemCache" /t REG_DWORD /d 1 /f
 timeout /t 2 >nul
 
-
 echo ==============================================================
 echo 23. DESHABILITAR ACTUALIZACIONES AUTOMÁTICAS DE DRIVERS Y WINDOWS STORE
 echo ============================================================== 
@@ -382,7 +381,6 @@ if errorlevel 1 (
 
 echo [✔] Registro actualizado.  
 
-
 echo ==============================================================
 echo 28. DEFENDER
 echo ============================================================== 
@@ -392,57 +390,41 @@ sc stop WinDefend
 sc config WinDefend start= disabled
 
 REM Este script debe ejecutarse como administrador
-
 echo Deshabilitando funciones de Microsoft Defender...
-
 REM Deshabilitar Protección en tiempo real
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v DisableRealtimeMonitoring /t REG_DWORD /d 1 /f
-
 REM Deshabilitar Protección contra Manipulación
 reg add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v TamperProtection /t REG_DWORD /d 0 /f
-
 REM Deshabilitar Protección basada en la nube
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v DisableCloudProtection /t REG_DWORD /d 1 /f
-
 REM Deshabilitar Envío de muestras automático
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet" /v SubmitSamplesConsent /t REG_DWORD /d 2 /f
-
 REM Deshabilitar Protección de la unidad para desarrolladores
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v AllowDevelopmentWithoutDevLicense /t REG_DWORD /d 1 /f
-
 REM Deshabilitar Antivirus
 reg add "HKLM\SOFTWARE\Microsoft\Windows Defender\Real-Time Protection" /v DisableAntivirus /t REG_DWORD /d 1 /f
-
 REM Detener el servicio de Windows Defender
 sc stop WinDefend
-
 REM Deshabilitar el inicio automático del servicio de Windows Defender
 sc config WinDefend start= disabled
-
 echo Funciones de Windows Defender deshabilitadas. Es posible que necesites reiniciar el equipo para que los cambios surtan efecto.
-
 
 echo ==============================
 echo 29. DESINSTALAR O DESHABILITAR WIDGETS Y XBOX (CMD SOLAMENTE)
 echo ==============================
-
 :: Desactivar Widgets desde el registro (barra de tareas)
 echo Desactivando los Widgets desde la barra de tareas...
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v TaskbarDa /t REG_DWORD /d 0 /f
-
 :: Desactivar Widgets desde políticas (evita reinstalación)
 echo Bloqueando Widgets mediante políticas...
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Dsh" /v AllowNewsAndInterests /t REG_DWORD /d 0 /f
-
 :: Desinstalar Windows Web Experience Pack (Widgets backend)
 echo Desinstalando Windows Web Experience Pack (Widgets)...
 powershell -Command "Get-AppxPackage *WebExperience* | Remove-AppxPackage"
-
 :: Reiniciar el Explorador para aplicar el cambio
 echo Reiniciando el Explorador de Windows...
 taskkill /f /im explorer.exe
 start explorer.exe
-
 :: Intentar quitar apps UWP usando DISM (requiere permisos de admin)
 echo Intentando quitar paquetes preinstalados de Xbox...
 DISM /Online /Remove-ProvisionedAppxPackage /PackageName:Microsoft.XboxGamingOverlay_*
@@ -497,11 +479,9 @@ echo =============================================
 echo 31. DESHABILITAR WIDGETS Y COMPONENTES LIGEROS
 echo =============================================
 echo Deshabilitando Widgets y WebExperience...
-
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v TaskbarDa /t REG_DWORD /d 0 /f
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Dsh" /v AllowNewsAndInterests /t REG_DWORD /d 0 /f
 powershell -Command "Get-AppxPackage *WebExperience* | Remove-AppxPackage"
-
 echo Widgets eliminados.
 echo.
 
@@ -509,13 +489,10 @@ echo =============================================
 echo 32. OPTIMIZAR EFECTOS VISUALES (SIN BORRAR FONDO)
 echo =============================================
 echo Aplicando tema visual ligero (transparencia y animaciones)...
-
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v EnableTransparency /t REG_DWORD /d 0 /f
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v AppsUseLightTheme /t REG_DWORD /d 0 /f
 reg add "HKCU\Control Panel\Desktop\WindowMetrics" /v MinAnimate /t REG_SZ /d 0 /f
 reg add "HKCU\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\Bags\AllFolders\Shell" /v FolderType /t REG_SZ /d NotSpecified /f
-
-
 echo Tema visual optimizado. El fondo de pantalla no se modifica.
 echo.
 
@@ -523,11 +500,9 @@ echo =============================================
 echo 33. LIMPIAR PROGRAMAS DE INICIO AUTOMÁTICO
 echo =============================================
 echo Limpiando inicio automático innecesario...
-
 reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /f >nul 2>&1
 reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" /f >nul 2>&1
 reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" /f >nul 2>&1
-
 echo Programas de inicio limpiados.
 echo.
 
@@ -535,11 +510,9 @@ echo =============================================
 echo 34. FORZAR USO DE HIBERNACIÓN EN LUGAR DE SUSPENSIÓN
 echo =============================================
 echo Activando hibernación como modo preferido de reposo...
-
 powercfg -hibernate on
 powercfg /change standby-timeout-ac 0
 powercfg /change standby-timeout-dc 0
-
 echo Hibernación activada.
 echo.
 
@@ -561,8 +534,6 @@ echo Y|chkdsk C: /F /R /X
 :: Habilitar TRIM automático para SSDs (mejora vida útil y velocidad)
 fsutil behavior set disabledeletenotify 0
 
-
-
 echo
 echo ============================================
 echo CHKDSK se ejecuto y quedo programado.
@@ -574,7 +545,6 @@ echo 37. ACTUALIZAR TODO EL SOFTWARE
 echo ==============================
 start https://www.paypal.com/donate/?hosted_button_id=DMREEX4NSS7V4
 winget upgrade --all
-
 
 echo ----------------------------
 echo 35. Eliminando Bloatware...
