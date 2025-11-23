@@ -7,7 +7,13 @@ echo Iniciando optimización de Windows 11...
 echo ==============================
 timeout /t 3 >nul
 
-powershell -Command "Checkpoint-Computer -Description 'Antes de optimización' -RestorePointType MODIFY_SETTINGS"
+#powershell -Command "Checkpoint-Computer -Description 'Antes de optimización' -RestorePointType MODIFY_SETTINGS"
+# Verificar estado
+#manage-bde -status C:
+# Desactivar BitLocker
+#manage-bde -off C:
+# Verificar progreso
+#manage-bde -status C:
 
 echo ==============================================================
 echo 1. DESACTIVAR EFECTOS VISUALES Y ANIMACIONES
