@@ -205,6 +205,8 @@ echo Ajustando prioridad del procesador para aplicaciones activas...
 wmic process where "name='explorer.exe'" call setpriority 128
 wmic process where "name='notepad.exe'" call setpriority 128
 wmic process where "name='chrome.exe'" call setpriority 128
+echo Configurando distribucion de tiempo de CPU...
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\PriorityControl" /v "Win32PrioritySeparation" /t REG_DWORD /d 38 /f
 timeout /t 2 >nul
 
 echo ==============================================================
@@ -539,7 +541,7 @@ echo 36. Reparacion de Disco Duro y Sectores
 echo ============================================
 echo.
 :: Optimizar unidades sin dañar SSDs
-opt /C /H /Z
+#opt /C /H /Z
 
 echo Si la unidad C: esta en uso,
 echo el script confirmara automaticamente (Y).
