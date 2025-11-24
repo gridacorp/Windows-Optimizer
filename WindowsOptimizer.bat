@@ -7,13 +7,34 @@ echo Iniciando optimización de Windows 11...
 echo ==============================
 timeout /t 3 >nul
 
-#powershell -Command "Checkpoint-Computer -Description 'Antes de optimización' -RestorePointType MODIFY_SETTINGS"
-# Verificar estado
-#manage-bde -status C:
-# Desactivar BitLocker
-#manage-bde -off C:
-# Verificar progreso
-#manage-bde -status C:
+echo ==============================================================
+echo CREANDO PUNTO DE RESTAURACION DEL SISTEMA
+echo ============================================================== 
+echo Creando punto de restauracion antes de realizar los cambios...
+powershell -Command "Enable-ComputerRestore -Drive 'C:\\'; Checkpoint-Computer -Description 'Antes de optimizacion Windows 11' -RestorePointType MODIFY_SETTINGS"
+if %errorlevel% equ 0 (
+    echo Punto de restauracion creado exitosamente.
+) else (
+    echo ADVERTENCIA: No se pudo crear el punto de restauracion.
+    echo Es posible que la restauracion del sistema este desactivada.
+    echo Te recomendamos crear un punto de restauracion manualmente antes de continuar.
+)
+timeout /t 3 >nul
+
+echo ==============================================================
+echo 00. DESACTIVAR BITLOCKER PARA MEJORAR RENDIMIENTO DE DISCO
+echo ============================================================== 
+echo Verificando estado de BitLocker...
+manage-bde -status C: | findstr /i "protection"
+if %errorlevel% equ 0 (
+    echo BitLocker está activado. Desactivando...
+    manage-bde -off C:
+    echo BitLocker se está desactivando. Este proceso puede tardar varias horas dependiendo del tamaño del disco.
+    echo Los cambios se aplicarán completamente al reiniciar el sistema.
+) else (
+    echo BitLocker no está activado en la unidad C: o no está disponible en esta edición de Windows.
+)
+timeout /t 2 >nul
 
 echo ==============================================================
 echo 1. DESACTIVAR EFECTOS VISUALES Y ANIMACIONES
@@ -43,8 +64,6 @@ sc stop dmwappushservice
 sc config dmwappushservice start= disabled
 sc stop WdiServiceHost
 sc config WdiServiceHost start= disabled
-#sc stop NlaSvc
-#sc config NlaSvc start= disabled
 sc stop PcaSvc
 sc config PcaSvc start= disabled
 sc stop WerSvc
@@ -72,55 +91,25 @@ timeout /t 2 >nul
 echo ==============================================================
 echo 5. GESTIÓN DE NAVEGADORES
 echo ============================================================== 
+echo Instalando Brave Browser...
 winget install Brave.Brave --silent --accept-package-agreements --accept-source-agreements
 
-echo ==============================================================
-echo 5.1 GESTIÓN DE MICROSOFT EDGE
-echo ============================================================== 
-setlocal
-rem Obtiene la versión instalada de Microsoft Edge
-for /f "tokens=3" %%v in ('reg query "HKEY_CURRENT_USER\Software\Microsoft\Edge\BLBeacon" /v version') do set EDGE_VERSION=%%v
-rem Ruta del instalador de Edge
-set INSTALLER_PATH=%PROGRAMFILES(X86)%\Microsoft\Edge\Application\%EDGE_VERSION%\Installer
-rem Desinstala Microsoft Edge
-"%INSTALLER_PATH%\setup.exe" --uninstall --system-level --verbose-logging --force-uninstall
-endlocal
+echo Configurando Brave como navegador predeterminado...
+reg add "HKCU\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice" /v "ProgId" /d "BraveHTML" /f
+reg add "HKCU\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice" /v "ProgId" /d "BraveHTML" /f
+reg add "HKCU\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\ftp\UserChoice" /v "ProgId" /d "BraveHTML" /f
+reg add "HKCU\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\mailto\UserChoice" /v "ProgId" /d "BraveHTML" /f
 
-title Eliminar Microsoft Edge
-cls
+echo Estableciendo asociaciones de archivos...
+assoc .html=BraveHTML
+assoc .htm=BraveHTML
+assoc .pdf=BraveHTML
+assoc .xhtml=BraveHTML
+assoc .xht=BraveHTML
 
-echo Eliminando Microsoft Edge completamente...
-echo Cerrar Microsoft Edge si está en ejecución
-taskkill /f /im msedge.exe
-
-echo Eliminar carpeta de instalación de Edge
-rmdir /s /q "C:\Program Files (x86)\Microsoft\Edge"
-rmdir /s /q "C:\Program Files\Microsoft\Edge"
-
-echo Eliminar las carpetas de perfil y datos
-rmdir /s /q "%localappdata%\Microsoft\Edge"
-rmdir /s /q "%appdata%\Microsoft\Edge"
-
-echo Eliminar las claves del registro de Edge
-reg delete "HKCU\Software\Microsoft\Edge" /f
-reg delete "HKLM\Software\Microsoft\Edge" /f
-reg delete "HKLM\Software\Policies\Microsoft\Edge" /f
-
-timeout /t 2 >nul
-
-echo Microsoft Edge ha sido completamente eliminado.
-
-:: DESINSTALAR MICROSOFT EDGE
-echo ==============================
-echo 5.2 Eliminando Microsoft Edge...
-echo ==============================
-timeout /t 2 >nul
-cd %PROGRAMFILES(X86)%\Microsoft\Edge\Application\*
-for /d %%F in (9*) do cd %%F\Installer & setup.exe --uninstall --system-level --verbose-logging --force-uninstall
-
-echo ==============================
-echo Microsoft Edge ha sido eliminado.
-echo ==============================
+echo Reiniciando el Explorador para aplicar cambios...
+taskkill /f /im explorer.exe >nul 2>&1
+start explorer.exe
 timeout /t 2 >nul
 
 echo ==============================================================
@@ -133,14 +122,6 @@ reg add "HKEY_CURRENT_USER\Software\Policies\Microsoft\Windows\Explorer" /v Disa
 
 taskkill /f /im explorer.exe
 start explorer.exe
-timeout /t 2 >nul
-
-if exist "%ProgramFiles(x86)%\Microsoft\Edge" rd /s /q "%ProgramFiles(x86)%\Microsoft\Edge"
-
-taskkill /f /im msedge.exe
-if exist "%ProgramFiles(x86)%\Microsoft\Edge" rd /s /q "%ProgramFiles(x86)%\Microsoft\Edge"
-if exist "%ProgramFiles%\Microsoft\Edge" rd /s /q "%ProgramFiles%\Microsoft\Edge"
-if exist "%LocalAppData%\Microsoft\Edge" rd /s /q "%LocalAppData%\Microsoft\Edge"
 timeout /t 2 >nul
 
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "AllowCortana" /t REG_DWORD /d 0 /f
@@ -243,24 +224,30 @@ timeout /t 2 >nul
 echo ==============================================================
 echo 18. Gestión inteligente de procesos
 echo ============================================================== 
-:: Establecer prioridad de procesos críticos (seguro y reversible)
-wmic process where name="explorer.exe" CALL setpriority "high priority"
-wmic process where name="dwm.exe" CALL setpriority "high priority"
-wmic process where name="System" CALL setpriority "realtime"
-:: Limitar procesos en segundo plano no esenciales
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications" /v "GlobalUserDisabled" /t REG_DWORD /d 0 /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications" /v "DisableBackgroundApps" /t REG_DWORD /d 1 /f
-:: Habilitar SysMain (anteriormente SuperFetch) para SSDs
-sc config "SysMain" start= auto
-sc start "SysMain"
-:: Configurar caché de inicio para aplicaciones frecuentes
-reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VolumeCaches\Startup Apps" /v "Autorun" /t REG_DWORD /d 1 /f
-:: Optimizar caché de almacenamiento
-reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "IoPageLockLimit" /t REG_DWORD /d 268435456 /f
-:: Limpiar caché de Windows sin afectar actualizaciones
-DISM /Online /Cleanup-Image /StartComponentCleanup /ResetBase
-:: Limpiar caché de WinSxS seguro
-DISM /Online /Cleanup-Image /SPSuperseded
+:: 1. LIMPIAR caché de sistema SIN riesgos
+echo Limpiando caché de componentes de forma segura...
+DISM /Online /Cleanup-Image /StartComponentCleanup >nul 2>&1
+
+:: 2. DESACTIVAR SysMain en SSDs (mejora rendimiento real)
+echo Desactivando SysMain para SSDs...
+sc config "SysMain" start= disabled >nul 2>&1
+sc stop "SysMain" >nul 2>&1
+
+:: 3. OPTIMIZAR Storage Sense (limpieza automatica segura)
+echo Configurando Storage Sense optimizado...
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy" /v 01 /t REG_DWORD /d 1 /f >nul
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy" /v 04 /t REG_DWORD /d 1 /f >nul
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy" /v 20 /t REG_DWORD /d 1 /f >nul
+
+:: 4. LIMITAR apps en segundo plano (ahorra RAM/CPU)
+echo Limitando aplicaciones en segundo plano...
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications" /v "GlobalUserDisabled" /t REG_DWORD /d 1 /f >nul
+
+:: 5. ANALIZAR almacenamiento antes de limpiar
+DISM /Online /Cleanup-Image /AnalyzeComponentStore >nul 2>&1
+
+echo [OK] Gestion de procesos optimizada (segura y reversible).
+timeout /t 2 >nul
 
 echo ==============================================================
 echo 19. DESHABILITAR O AJUSTAR SERVICIOS INNECESARIOS
@@ -369,7 +356,6 @@ if errorlevel 1 (
   echo ERROR: no se pudo desactivar AutomaticManagedPagefile.
   pause & exit /b 1
 )
-
 REM ——————————————————————————————————————————
 REM 4) Escribir los valores de pagefile en registro
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" ^
@@ -378,13 +364,11 @@ if errorlevel 1 (
   echo ERROR: no se pudo escribir PagingFiles.
   pause & exit /b 1
 )
-
 echo [✔] Registro actualizado.  
 
 echo ==============================================================
 echo 28. DEFENDER
 echo ============================================================== 
-
 reg add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v TamperProtection /t REG_DWORD /d 0 /f
 sc stop WinDefend
 sc config WinDefend start= disabled
@@ -431,7 +415,6 @@ DISM /Online /Remove-ProvisionedAppxPackage /PackageName:Microsoft.XboxGamingOve
 DISM /Online /Remove-ProvisionedAppxPackage /PackageName:Microsoft.XboxGameCallableUI_*
 DISM /Online /Remove-ProvisionedAppxPackage /PackageName:Microsoft.XboxIdentityProvider_*
 DISM /Online /Remove-ProvisionedAppxPackage /PackageName:Microsoft.GamingApp_*
-
 timeout /t 2 >nul
 
 @echo off
@@ -520,19 +503,28 @@ echo.
 echo ============================================
 echo 36. Reparacion de Disco Duro y Sectores
 echo ============================================
-echo.
 :: Optimizar unidades sin dañar SSDs
-#opt /C /H /Z
+defrag C: /H /Z /U >nul 2>&1 || (
+    echo Optimizacion programada para el proximo reinicio...
+)
 
-echo Si la unidad C: esta en uso,
-echo el script confirmara automaticamente (Y).
-echo
-
-:: Ejecuta CHKDSK y responde "Y" automaticamente
-echo Y|chkdsk C: /F /R /X
+echo Ejecutando comprobacion de disco con confirmaciones automaticas...
+chkdsk C: /scan /perf >nul 2>&1
+(
+    echo y
+    timeout /t 1 >nul
+) | chkdsk C: /F /R /X >nul 2>&1
 
 :: Habilitar TRIM automático para SSDs (mejora vida útil y velocidad)
-fsutil behavior set disabledeletenotify 0
+fsutil behavior set disabledeletenotify 0 >nul 2>&1 && (
+    echo TRIM automatico habilitado para SSDs.
+) || (
+    echo No se pudo habilitar TRIM automatico.
+)
+
+echo Verificacion y reparacion de disco programadas.
+echo NOTA: Algunas operaciones se completaran en el proximo reinicio.
+timeout /t 2 >nul
 
 echo
 echo ============================================
@@ -558,7 +550,6 @@ echo ----- Eliminando Game Bar desde políticas -----
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR" /v AllowGameDVR /t REG_DWORD /d 0 /f
 reg add "HKLM\SOFTWARE\Microsoft\Windows\GameDVR" /v AllowGameDVR /t REG_DWORD /d 0 /f
 
-
 :: Ejecutar PowerShell desde CMD para desinstalar apps
 powershell -Command "Get-AppxPackage *3DBuilder* | Remove-AppxPackage"
 powershell -Command "Get-AppxPackage *ZuneMusic* | Remove-AppxPackage"      :: Groove Música
@@ -583,7 +574,6 @@ powershell -Command "Get-AppxPackage *Microsoft.YourPhone* | Remove-AppxPackage"
 powershell -Command "Get-AppxPackage *Microsoft.MicrosoftStickyNotes* | Remove-AppxPackage"
 powershell -Command "Get-AppxPackage *Microsoft.OneConnect* | Remove-AppxPackage"
 powershell -Command "Get-AppxPackage *Microsoft.Wallet* | Remove-AppxPackage"
-
 powershell -Command "Get-AppxPackage *XboxGamingOverlay* | Remove-AppxPackage"
 powershell -Command "Get-AppxPackage *XboxGameCallableUI* | Remove-AppxPackage"
 powershell -Command "Get-AppxPackage *XboxIdentityProvider* | Remove-AppxPackage"
