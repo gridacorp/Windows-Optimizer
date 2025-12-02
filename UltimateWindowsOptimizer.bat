@@ -533,7 +533,90 @@ echo Hibernación activada.
 echo.
 
 echo =============================================
-echo 35. xxxxxxxx
+echo 35. Para equipos con menos de 8 GB de 
+echo =============================================
+REM Obtener la cantidad de RAM en MB
+for /f %%A in ('powershell -Command "[math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory/1MB)" 2^>^&1') do set RAM_MB=%%A
+
+REM Verificar si la obtención de RAM fue exitosa
+if "%RAM_MB%"=="" (
+    echo ERROR: No se pudo determinar la cantidad de RAM del sistema.
+    echo El script se ejecutara como medida de seguridad.
+    timeout /t 3 >nul
+    goto continue_optimization
+)
+
+REM Convertir RAM a número y comparar
+set /a RAM_NUM=%RAM_MB% 2>nul
+if %errorlevel% neq 0 (
+    echo ERROR: Valor de RAM invalido.
+    echo El script se ejecutara como medida de seguridad.
+    timeout /t 3 >nul
+    goto continue_optimization
+)
+
+REM Verificar si la RAM es menor a 8GB (8192 MB)
+if %RAM_NUM% geq 8192 (
+    echo ======================================================
+    echo SISTEMA CON %RAM_NUM% MB DE RAM (%RAM_NUM% GB)
+    echo ======================================================
+    echo.
+    echo Este optimizador esta disenado EXCLUSIVAMENTE para 
+    echo equipos con MENOS de 8 GB de RAM.
+    echo.
+    echo Tu sistema tiene RAM suficiente para funcionar bien
+    echo con la configuracion predeterminada de Windows 11.
+    echo.
+    echo ^>^> NO SE REALIZARA NINGUN CAMBIO EN TU SISTEMA ^<^<
+    echo.
+    echo Recomendaciones para tu sistema:
+    echo - Manten Windows actualizado
+    echo - Usa el plan de energia "Equilibrado" (predeterminado)
+    echo - No desactives servicios criticos como SysMain
+    echo.
+    echo Presiona cualquier tecla para salir...
+    pause >nul
+    exit
+)
+
+:continue_optimization
+echo ======================================================
+echo SISTEMA CON %RAM_NUM% MB DE RAM (%RAM_NUM% GB)
+echo OPTIMIZACION MAXIMA RENDIMIENTO ACTIVADA
+echo ======================================================
+timeout /t 3 >nul
+
+REM 1. Configurar pagefile ADECUADO para poca RAM
+set /a MIN_SIZE=%RAM_NUM%
+set /a MAX_SIZE=%RAM_NUM%*2
+
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "AutomaticManagedPagefile" /t REG_DWORD /d 0 /f >nul
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "PagingFiles" /t REG_MULTI_SZ /d "C:\pagefile.sys %MIN_SIZE% %MAX_SIZE%" /f >nul
+
+REM 2. DESACTIVAR EFECTOS VISUALES (ahorra RAM y CPU)
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v "EnableTransparency" /t REG_DWORD /d 0 /f >nul
+reg add "HKCU\Control Panel\Desktop" /v "UserPreferencesMask" /t REG_BINARY /d 9012038010000000 /f >nul
+reg add "HKCU\Control Panel\Desktop\WindowMetrics" /v "MinAnimate" /t REG_SZ /d "0" /f >nul
+
+REM 3. DESACTIVAR SERVICIOS CONSUMIDORES DE RAM
+sc config SysMain start= disabled >nul
+sc config WSearch start= disabled >nul  
+sc config DiagTrack start= disabled >nul
+sc config dmwappushservice start= disabled >nul
+
+REM 4. ELIMINAR BLOATWARE CRÍTICO (ahorra RAM en segundo plano)
+powershell -Command "Get-AppxPackage *Xbox* | Remove-AppxPackage" >nul 2>&1
+powershell -Command "Get-AppxPackage *WindowsStore* | Remove-AppxPackage" >nul 2>&1
+powershell -Command "Get-AppxPackage *OneDrive* | Remove-AppxPackage" >nul 2>&1
+
+REM 5. OPTIMIZAR MEMORIA DEL SISTEMA
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "LargeSystemCache" /t REG_DWORD /d 1 /f >nul
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "DisablePagingExecutive" /t REG_DWORD /d 1 /f >nul
+
+REM 6. ¡¡¡CAMBIO CRUCIAL!!! - FORZAR ALTO RENDIMIENTO
+powercfg -setactive SCHEME_MAX >nul
+echo =============================================
+echo OPTIMIZACION COMPLETADA - ALTO RENDIMIENTO
 echo =============================================
 
 echo ============================================
@@ -546,14 +629,88 @@ echo CHKDSK se ejecuto y quedo programado.
 echo ============================================
 
 echo ==============================
-echo 37. ACTUALIZAR TODO EL SOFTWARE
+echo 37. Para equipos con MAS de 8 GB de RAM
 echo ==============================
-start https://www.paypal.com/donate/?hosted_button_id=DMREEX4NSS7V4
-winget upgrade --all
+echo Verificando cantidad de memoria RAM...
+for /f "tokens=2 delims==" %%a in ('wmic ComputerSystem get TotalPhysicalMemory /value ^| find "="') do set TotalRAM=%%a
+set /a TotalRAMGB=%TotalRAM% / 1073741824
 
-echo ----------------------------
-echo 35. Eliminando Bloatware...
-echo ----------------------------
+echo Cantidad total de RAM detectada: %TotalRAMGB% GB
+
+if %TotalRAMGB% leq 8 (
+    echo.
+    echo ERROR: Este optimizador esta disenado SOLO para equipos con MAS DE 8 GB de RAM.
+    echo Tu sistema tiene %TotalRAMGB% GB de RAM, que no cumple con el requisito minimo.
+    echo.
+    echo Recomendacion: Usa una version optimizada para sistemas con 8GB o menos de RAM.
+    echo.
+    pause
+    exit /b 1
+)
+
+echo ==============================
+echo Sistema cumple con requisitos (mas de 8GB RAM)
+echo Iniciando optimizacion...
+echo ==============================
+timeout /t 3 >nul
+
+REM Detectar si es SSD para optimizaciones específicas
+wmic diskdrive where "MediaType='SSD'" get DeviceID | findstr /i "SSD" >nul && set SSD=1 || set SSD=0
+
+echo ==============================================================
+echo OPTIMIZACION DE MEMORIA PARA 8GB+ RAM
+echo ==============================================================
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "DisablePagingExecutive" /t REG_DWORD /d 1 /f
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "LargeSystemCache" /t REG_DWORD /d 1 /f
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "IoPageLockLimit" /t REG_DWORD /d 262144 /f
+
+echo ==============================================================
+echo OPTIMIZACION DE CPU PARA BAJO LATENCIA
+echo ==============================================================
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\kernel" /v "DisableDynamicTick" /t REG_DWORD /d 1 /f
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\kernel" /v "ClockInterruptsPerSecond" /t REG_DWORD /d 1024 /f
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\PriorityControl" /v "Win32PrioritySeparation" /t REG_DWORD /d 38 /f
+
+echo ==============================================================
+echo SERVICIOS QUE CAUSAN MICRO-STUTTERS (desactivar)
+echo ==============================================================
+sc config Audiosrv start= disabled >nul 2>&1
+sc config AudioEndpointBuilder start= disabled >nul 2>&1
+sc config MMCSS start= disabled >nul 2>&1
+sc config Themes start= disabled >nul 2>&1
+sc config UxSms start= disabled >nul 2>&1
+sc config Sens start= disabled >nul 2>&1
+
+echo ==============================================================
+echo OPTIMIZACION DE GPU PARA GAMING
+echo ==============================================================
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" /v "HwSchMode" /t REG_DWORD /d 2 /f
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers\Scheduler" /v "EnablePreemption" /t REG_DWORD /d 1 /f
+reg add "HKCU\Software\Microsoft\DirectX\UserGpuPreferences" /v "D3D12Enable" /t REG_DWORD /d 1 /f
+
+REM Solo desactivar SysMain si es SSD
+if "%SSD%"=="1" (
+    echo Sistema detectado como SSD - Desactivando SysMain...
+    sc config SysMain start= disabled
+    sc stop SysMain
+)
+
+echo ==============================================================
+echo OPTIMIZACION DE RED PARA BAJA LATENCIA
+echo ==============================================================
+netsh int tcp set global autotuninglevel=experimental
+netsh int tcp set global ecncapability=disabled
+netsh int tcp set global rss=enabled
+netsh int ip set global taskoffload=disabled
+
+echo ==============================
+echo Optimizacion completada para sistema de 8GB+ RAM
+echo Reinicio recomendado para aplicar todos los cambios
+echo ==============================
+
+echo ==============================
+echo 38. Eliminando Bloatware...
+echo ==============================
 
 echo ----- Bloqueando reinstalación -----
 reg add "HKLM\SOFTWARE\Policies\Microsoft\WindowsStore" /v AutoDownload /t REG_DWORD /d 2 /f
@@ -599,6 +756,12 @@ powershell -Command "Get-AppxPackage *Microsoft.XboxGamingOverlay* | Remove-Appx
 echo ----------------------------
 echo Bloatware eliminado.
 echo ----------------------------
+
+echo ==============================
+echo 39. ACTUALIZAR TODO EL SOFTWARE
+echo ==============================
+start https://www.paypal.com/donate/?hosted_button_id=DMREEX4NSS7V4
+winget upgrade --all
 
 echo ==============================
 echo Optimización completada.
