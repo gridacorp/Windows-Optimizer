@@ -184,6 +184,8 @@ echo ==============================================================
 echo Desactivando indexación de búsqueda...
 sc stop "WSearch"
 sc config "WSearch" start= disabled || echo No se pudo detener el servicio WSearch
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\WSearch" /v "Start" /t REG_DWORD /d 4 /f
+echo Servicio de búsqueda desactivado completamente
 timeout /t 2 >nul
 
 echo ==============================================================
@@ -284,6 +286,7 @@ echo 19. DESHABILITAR O AJUSTAR SERVICIOS INNECESARIOS
 echo ============================================================== 
 echo Deshabilitando servicios innecesarios...
 sc config Fax start= disabled
+DISM /Online /Disable-Feature /FeatureName:FaxServicesClientPackage /NoRestart
 sc config RemoteRegistry start= disabled
 taskkill /f /im OneDrive.exe
 reg add "HKLM\Software\Policies\Microsoft\Windows\OneDrive" /v "DisableFileSync" /t REG_DWORD /d 1 /f
