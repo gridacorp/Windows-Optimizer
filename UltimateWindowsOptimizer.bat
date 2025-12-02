@@ -9,32 +9,62 @@ timeout /t 3 >nul
 
 echo ==============================================================
 echo CREANDO PUNTO DE RESTAURACION DEL SISTEMA
-echo ============================================================== 
+echo ==============================================================
+
+echo Comprobando y activando la Proteccion del Sistema en C:...
+powershell -Command "Enable-ComputerRestore -Drive 'C:\\'" >nul 2>&1
+
 echo Creando punto de restauracion antes de realizar los cambios...
-powershell -Command "Enable-ComputerRestore -Drive 'C:\\'; Checkpoint-Computer -Description 'Antes de optimizacion Windows 11' -RestorePointType MODIFY_SETTINGS"
+powershell -Command "Checkpoint-Computer -Description 'Antes de optimizacion Windows 11' -RestorePointType MODIFY_SETTINGS" >nul 2>&1
+
 if %errorlevel% equ 0 (
+    echo.
     echo Punto de restauracion creado exitosamente.
 ) else (
+    echo.
     echo ADVERTENCIA: No se pudo crear el punto de restauracion.
-    echo Es posible que la restauracion del sistema este desactivada.
-    echo Te recomendamos crear un punto de restauracion manualmente antes de continuar.
+    echo.
+    echo Causas comunes:
+    echo  - La Proteccion del Sistema esta desactivada (aunque se intento activar).
+    echo  - El sistema esta en una maquina virtual sin soporte completo.
+    echo  - Politicas de grupo o antivirus estan bloqueando la funcion.
+    echo.
+    echo ^>^> Recomendacion: Activala manualmente:
+    echo     1. Presiona Win + R, escribe "sysdm.cpl" y pulsa Enter.
+    echo     2. Ve a la pestaña "Proteccion del sistema".
+    echo     3. Selecciona la unidad C: y haz clic en "Configurar".
+    echo     4. Marca "Activar la proteccion del sistema" y aplica.
+    echo.
+    echo Continuando en 5 segundos...
+    timeout /t 5 >nul
 )
 timeout /t 3 >nul
 
 echo ==============================================================
 echo 00. DESACTIVAR BITLOCKER PARA MEJORAR RENDIMIENTO DE DISCO
-echo ============================================================== 
-echo Verificando estado de BitLocker...
-manage-bde -status C: | findstr /i "protection"
-if %errorlevel% equ 0 (
-    echo BitLocker está activado. Desactivando...
+echo ==============================================================
+
+echo Verificando estado de BitLocker en la unidad C: ...
+
+REM Buscar "Protección activada" (la salida en español)
+manage-bde -status C: | findstr /i /c:"Protección activada"
+set BITLOCKER_STATUS=%errorlevel%
+
+if %BITLOCKER_STATUS% equ 0 (
+    echo BitLocker está **ACTIVADO**. Iniciando desactivación...
     manage-bde -off C:
-    echo BitLocker se está desactivando. Este proceso puede tardar varias horas dependiendo del tamaño del disco.
-    echo Los cambios se aplicarán completamente al reiniciar el sistema.
+    if %errorlevel% equ 0 (
+        echo La orden de desactivación se envió correctamente.
+        echo BitLocker se está desactivando. Este proceso puede tardar varias horas dependiendo del tamaño del disco.
+        echo **Los cambios se aplicarán completamente al reiniciar el sistema.**
+    ) else (
+        echo **ERROR:** Fallo al intentar ejecutar "manage-bde -off C:". **Asegúrese de ejecutar como administrador.**
+    )
 ) else (
-    echo BitLocker no está activado en la unidad C: o no está disponible en esta edición de Windows.
+    echo BitLocker no está activado en la unidad C:, o no está disponible en esta edición de Windows.
+    REM Un error de `manage-bde` (como no existir) también podría llevar a este bloque.
 )
-timeout /t 2 >nul
+timeout /t 5 >nul
 
 echo ==============================================================
 echo 1. DESACTIVAR EFECTOS VISUALES Y ANIMACIONES
@@ -499,38 +529,18 @@ powercfg /change standby-timeout-dc 0
 echo Hibernación activada.
 echo.
 
+echo =============================================
+echo 35. xxxxxxxx
+echo =============================================
 
 echo ============================================
 echo 36. Reparacion de Disco Duro y Sectores
 echo ============================================
-:: Optimizar unidades sin dañar SSDs
-defrag C: /H /Z /U >nul 2>&1 || (
-    echo Optimizacion programada para el proximo reinicio...
-)
-
-echo Ejecutando comprobacion de disco con confirmaciones automaticas...
-chkdsk C: /scan /perf >nul 2>&1
-(
-    echo y
-    timeout /t 1 >nul
-) | chkdsk C: /F /R /X >nul 2>&1
-
-:: Habilitar TRIM automático para SSDs (mejora vida útil y velocidad)
-fsutil behavior set disabledeletenotify 0 >nul 2>&1 && (
-    echo TRIM automatico habilitado para SSDs.
-) || (
-    echo No se pudo habilitar TRIM automatico.
-)
-
-echo Verificacion y reparacion de disco programadas.
-echo NOTA: Algunas operaciones se completaran en el proximo reinicio.
-timeout /t 2 >nul
-
-echo
+echo Y | chkdsk C: /F /R /X
+echo S | chkdsk C: /F /R /X
 echo ============================================
 echo CHKDSK se ejecuto y quedo programado.
 echo ============================================
-echo
 
 echo ==============================
 echo 37. ACTUALIZAR TODO EL SOFTWARE
