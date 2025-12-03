@@ -78,26 +78,22 @@ echo ==============================================================
 echo 2. BLOQUEAR TELEMETRÍA Y RECOLECCIÓN DE DATOS
 echo ============================================================== 
 echo Bloqueando telemetría y recopilacion de datos...
-sc stop DiagTrack
-sc config DiagTrack start= disabled
-sc stop dmwappushservice
-sc config dmwappushservice start= disabled
+sc stop DiagTrack >nul 2>&1
+sc config DiagTrack start= disabled >nul 2>&1
+sc stop dmwappushservice >nul 2>&1
+sc config dmwappushservice start= disabled >nul 2>&1
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "AllowTelemetry" /t REG_DWORD /d 0 /f
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo" /v "Enabled" /t REG_DWORD /d 0 /f
 timeout /t 2 >nul
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "AllowCortana" /t REG_DWORD /d 0 /f
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo" /v "Enabled" /t REG_DWORD /d 0 /f
 echo Desactivando servicios de telemetría...
-sc stop DiagTrack
-sc config DiagTrack start= disabled
-sc stop dmwappushservice
-sc config dmwappushservice start= disabled
-sc stop WdiServiceHost
-sc config WdiServiceHost start= disabled
-sc stop PcaSvc
-sc config PcaSvc start= disabled
-sc stop WerSvc
-sc config WerSvc start= disabled
+sc stop WdiServiceHost >nul 2>&1
+sc config WdiServiceHost start= disabled >nul 2>&1
+sc stop PcaSvc >nul 2>&1
+sc config PcaSvc start= disabled >nul 2>&1
+sc stop WerSvc >nul 2>&1
+sc config WerSvc start= disabled >nul 2>&1
 
 echo ==============================================================
 echo 3. CONFIGURAR ACTUALIZACIONES AUTOMÁTICAS (SOLO ACUMULATIVAS)
@@ -121,8 +117,22 @@ timeout /t 2 >nul
 echo ==============================================================
 echo 5. GESTIÓN DE NAVEGADORES
 echo ============================================================== 
-echo Instalando Brave Browser...
+
+:: Verificar si Brave ya está instalado
+echo Comprobando si Brave Browser ya está instalado...
+winget list Brave.Brave --accept-source-agreements >nul 2>&1
+if %errorlevel% equ 0 (
+    echo Brave Browser ya está instalado. No se realizarán cambios.
+    exit /b 0
+)
+
+echo Brave Browser NO está instalado. Procediendo con la instalacion...
+:: Instalar Brave Browser
 winget install Brave.Brave --silent --accept-package-agreements --accept-source-agreements
+if %errorlevel% neq 0 (
+    echo [ERROR] Falló la instalación de Brave Browser.
+    exit /b 1
+)
 
 echo Configurando Brave como navegador predeterminado...
 reg add "HKCU\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice" /v "ProgId" /d "BraveHTML" /f
@@ -193,6 +203,7 @@ echo 10. AJUSTAR PLAN DE ENERGÍA A "ALTO RENDIMIENTO"
 echo ============================================================== 
 echo Ajustando plan de energía a "Alto rendimiento"...
 powercfg -setactive SCHEME_MIN
+powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
 timeout /t 2 >nul
 
 echo ==============================================================
@@ -205,11 +216,33 @@ reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\GameBar" /v "AllowGameBa
 timeout /t 2 >nul
 
 echo ==============================================================
-echo 12. HABILITAR EL MODO DE JUEGOS
+echo 12. HABILITAR EL MODO DE JUEGOS Y MAXIMO RENDIMIENTO
 echo ============================================================== 
-echo Habilitando Modo de Juegos...
-reg add "HKCU\System\GameConfigStore" /v "GameModeEnabled" /t REG_DWORD /d 1 /f
+echo Habilitando Modo de Juegos (Game Mode)...
+reg add "HKCU\System\GameConfigStore" /v "GameModeEnabled" /t REG_DWORD /d 1 /f >nul 2>&1
 timeout /t 2 >nul
+
+echo.
+echo Habilitando plan de energia "Ultimate Performance" (Maximo rendimiento)...
+REM Comando para agregar el plan de energia oculto "Ultimate Performance" en Windows 11
+powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 >nul 2>&1
+timeout /t 2 >nul
+
+echo.
+echo Activando el plan "Ultimate Performance" como predeterminado...
+REM Se usa el GUID del plan Ultimate Performance para Windows 11
+for /f "tokens=4" %%a in ('powercfg /list ^| findstr "e9a42b02-d5df-448d-aa00-03f14749eb61"') do set "plan_guid=%%a"
+if defined plan_guid (
+    powercfg -setactive %plan_guid%
+) else (
+    echo Plan no encontrado, usando plan de Alto Rendimiento como alternativa...
+    powercfg -duplicatescheme 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c >nul 2>&1
+    powercfg -setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
+)
+timeout /t 2 >nul
+
+echo.
+echo ¡Optimizaciones de rendimiento completadas!
 
 echo ==============================================================
 echo 13. AJUSTAR ESCALADO DE GPU PARA MEJOR RENDIMIENTO
@@ -223,9 +256,10 @@ echo ==============================================================
 echo 14. OPTIMIZAR PRIORIDAD DEL PROCESADOR PARA APLICACIONES ACTIVAS
 echo ============================================================== 
 echo Ajustando prioridad del procesador para aplicaciones activas...
-wmic process where "name='explorer.exe'" call setpriority 128
-wmic process where "name='notepad.exe'" call setpriority 128
-wmic process where "name='chrome.exe'" call setpriority 128
+powershell -Command "Get-Process -Name explorer -ErrorAction SilentlyContinue | ForEach-Object { $_.PriorityClass = 'High' }"
+powershell -Command "Get-Process -Name notepad -ErrorAction SilentlyContinue | ForEach-Object { $_.PriorityClass = 'High' }"
+powershell -Command "Get-Process -Name chrome -ErrorAction SilentlyContinue | ForEach-Object { $_.PriorityClass = 'High' }"
+
 echo Configurando distribucion de tiempo de CPU...
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\PriorityControl" /v "Win32PrioritySeparation" /t REG_DWORD /d 38 /f
 timeout /t 2 >nul
@@ -251,6 +285,7 @@ echo 17. DESHABILITAR LÍMITE DE ANCHO DE BANDA DE WINDOWS UPDATE
 echo ============================================================== 
 echo Deshabilitando límite de ancho de banda de Windows Update...
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization" /v "NoBandwidthThrottling" /t REG_DWORD /d 1 /f
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\DoSvc" /v "Start" /t REG_DWORD /d 4 /f
 timeout /t 2 >nul
 
 echo ==============================================================
@@ -285,19 +320,24 @@ echo ==============================================================
 echo 19. DESHABILITAR O AJUSTAR SERVICIOS INNECESARIOS
 echo ============================================================== 
 echo Deshabilitando servicios innecesarios...
-sc config Fax start= disabled
 DISM /Online /Disable-Feature /FeatureName:FaxServicesClientPackage /NoRestart
 sc config RemoteRegistry start= disabled
+sc config Fax start= disabled
 taskkill /f /im OneDrive.exe
+taskkill /f /im OneDriveSetup.exe >nul 2>&1
 reg add "HKLM\Software\Policies\Microsoft\Windows\OneDrive" /v "DisableFileSync" /t REG_DWORD /d 1 /f
+reg add "HKLM\Software\Policies\Microsoft\Windows\OneDrive" /v "DisableFileSyncNGSC" /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ShowOneDrive" /t REG_DWORD /d 0 /f >nul 2>&1
 timeout /t 2 >nul
+
 
 echo ==============================================================
 echo 20. DESACTIVAR SINCRONIZACIÓN DE APLICACIONES Y NOTIFICACIONES
 echo ============================================================== 
 echo Deshabilitando sincronización de aplicaciones y notificaciones...
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\PushNotifications" /v "ToastEnabled" /t REG_DWORD /d 0 /f
-timeout /t 2 >nul
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\PushNotifications" /v "ToastEnabled" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKCU\Software\Policies\Microsoft\Windows\Explorer" /v "DisableNotificationCenter" /t REG_DWORD /d 1 /f >nul 2>&1
+timeout /t 2 /nobreak >nul
 
 echo ==============================================================
 echo 21. HABILITAR ACELERACIÓN DE GPU POR HARDWARE
@@ -314,8 +354,8 @@ netsh int tcp set global rss=enabled
 timeout /t 2 >nul
 echo Deshabilitar IPv6
 reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters" /v "DisabledComponents" /t REG_DWORD /d 255 /f
-echo Ajustar el algoritmo de congestión (por ejemplo, CTCP)
-netsh int tcp set global congestionprovider=ctcp
+echo Ajustar el algoritmo de congestión 
+netsh int tcp set global congestionprovider=cubic
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /v "AutoDetect" /t REG_DWORD /d 0 /f
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "LargeSystemCache" /t REG_DWORD /d 1 /f
 timeout /t 2 >nul
@@ -333,6 +373,7 @@ echo 24. DESHABILITAR STORAGE SENSE
 echo ============================================================== 
 echo Deshabilitando Storage Sense...
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\StorageSense" /v "DisableStorageSense" /t REG_DWORD /d 1 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\StorageSense" /v "AllowStorageSenseGlobal" /t REG_DWORD /d 0 /f
 timeout /t 2 >nul
 
 echo ==============================================================
@@ -341,7 +382,9 @@ echo ==============================================================
 echo Deshabilitando tareas programadas innecesarias...
 schtasks /Change /TN "\Microsoft\Windows\Customer Experience Improvement Program\Consolidator" /Disable
 schtasks /Change /TN "\Microsoft\Windows\Customer Experience Improvement Program\UsbCeip" /Disable
-echo Puedes agregar más tareas según tus necesidades.
+schtasks /Change /TN "\Microsoft\Windows\Customer Experience Improvement Program\KernelCeipTask" /Disable
+schtasks /Change /TN "\Microsoft\Windows\DiskDiagnostic\Microsoft-Windows-DiskDiagnosticDataCollector" /Disable
+echo Tareas deshabilitadas correctamente.
 timeout /t 2 >nul
 
 echo ==============================================================
@@ -351,6 +394,11 @@ echo Desactivando notificaciones, sugerencias y anuncios...
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SubscribedContent-310093Enabled" /t REG_DWORD /d 0 /f
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SubscribedContent-338393Enabled" /t REG_DWORD /d 0 /f
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SubscribedContent-353694Enabled" /t REG_DWORD /d 0 /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SubscribedContent-353696Enabled" /t REG_DWORD /d 0 /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SoftLandingEnabled" /t REG_DWORD /d 0 /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "FeatureManagementEnabled" /t REG_DWORD /d 0 /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SilentInstalledAppsEnabled" /t REG_DWORD /d 0 /f
+echo Desactivando notificaciones, sugerencias y anuncios...
 timeout /t 2 >nul
 
 echo ==============================================================
@@ -402,28 +450,46 @@ echo [✔] Registro actualizado.
 echo ==============================================================
 echo 28. DEFENDER
 echo ============================================================== 
-reg add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v TamperProtection /t REG_DWORD /d 0 /f
-sc stop WinDefend
-sc config WinDefend start= disabled
+REM Deshabilitar Protección contra Manipulación (TamperProtection)
+reg add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v TamperProtection /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v TamperProtectionConfig /t REG_DWORD /d 0 /f >nul 2>&1
 
-REM Este script debe ejecutarse como administrador
-echo Deshabilitando funciones de Microsoft Defender...
+REM Detener y deshabilitar el servicio principal de Defender
+sc stop WinDefend >nul 2>&1
+timeout /t 2 /nobreak >nul
+sc config WinDefend start= disabled >nul 2>&1
+
 REM Deshabilitar Protección en tiempo real
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v DisableRealtimeMonitoring /t REG_DWORD /d 1 /f
-REM Deshabilitar Protección contra Manipulación
-reg add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v TamperProtection /t REG_DWORD /d 0 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v DisableRealtimeMonitoring /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v DisableRealtimeMonitoring /t REG_DWORD /d 1 /f >nul 2>&1
+
 REM Deshabilitar Protección basada en la nube
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v DisableCloudProtection /t REG_DWORD /d 1 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v DisableCloudProtection /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet" /v SpyNetReporting /t REG_DWORD /d 0 /f >nul 2>&1
+
 REM Deshabilitar Envío de muestras automático
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet" /v SubmitSamplesConsent /t REG_DWORD /d 2 /f
-REM Deshabilitar Protección de la unidad para desarrolladores
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v AllowDevelopmentWithoutDevLicense /t REG_DWORD /d 1 /f
-REM Deshabilitar Antivirus
-reg add "HKLM\SOFTWARE\Microsoft\Windows Defender\Real-Time Protection" /v DisableAntivirus /t REG_DWORD /d 1 /f
-REM Detener el servicio de Windows Defender
-sc stop WinDefend
-REM Deshabilitar el inicio automático del servicio de Windows Defender
-sc config WinDefend start= disabled
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet" /v SubmitSamplesConsent /t REG_DWORD /d 2 /f >nul 2>&1
+
+REM Deshabilitar componentes adicionales de Windows 11
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Controlled Folder Access" /v EnableControlledFolderAccess /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\SmartScreen" /v ConfigureAppInstallControl /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\SmartScreen" /v ConfigureAppInstallControlEnabled /t REG_DWORD /d 0 /f >nul 2>&1
+
+REM Deshabilitar servicios relacionados adicionales en Windows 11
+sc stop WdNisSvc >nul 2>&1
+sc config WdNisSvc start= disabled >nul 2>&1
+sc stop WdBoot >nul 2>&1
+sc config WdBoot start= disabled >nul 2>&1
+sc stop WdFilter >nul 2>&1
+sc config WdFilter start= disabled >nul 2>&1
+sc stop WdNisDrv >nul 2>&1
+sc config WdNisDrv start= disabled >nul 2>&1
+
+REM Forzar la terminación de procesos de Defender en Windows 11
+taskkill /f /im MsMpEng.exe >nul 2>&1
+taskkill /f /im NisSrv.exe >nul 2>&1
+taskkill /f /im SenseCncProxy.exe >nul 2>&1
+
 echo Funciones de Windows Defender deshabilitadas. Es posible que necesites reiniciar el equipo para que los cambios surtan efecto.
 
 echo ==============================
@@ -431,36 +497,47 @@ echo 29. DESINSTALAR O DESHABILITAR WIDGETS Y XBOX (CMD SOLAMENTE)
 echo ==============================
 :: Desactivar Widgets desde el registro (barra de tareas)
 echo Desactivando los Widgets desde la barra de tareas...
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v TaskbarDa /t REG_DWORD /d 0 /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v TaskbarDa /t REG_DWORD /d 0 /f >nul 2>&1
+
 :: Desactivar Widgets desde políticas (evita reinstalación)
 echo Bloqueando Widgets mediante políticas...
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Dsh" /v AllowNewsAndInterests /t REG_DWORD /d 0 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Dsh" /v AllowNewsAndInterests /t REG_DWORD /d 0 /f >nul 2>&1
+
 :: Desinstalar Windows Web Experience Pack (Widgets backend)
 echo Desinstalando Windows Web Experience Pack (Widgets)...
-powershell -Command "Get-AppxPackage *WebExperience* | Remove-AppxPackage"
+powershell -Command "Get-AppxPackage -AllUsers *WindowsWebExperiencePack* | Remove-AppxPackage -ErrorAction SilentlyContinue"
+powershell -Command "Get-AppxPackage *WindowsWebExperiencePack* | Remove-AppxPackage -ErrorAction SilentlyContinue"
+
 :: Reiniciar el Explorador para aplicar el cambio
 echo Reiniciando el Explorador de Windows...
-taskkill /f /im explorer.exe
+taskkill /f /im explorer.exe >nul 2>&1
+timeout /t 3 >nul
 start explorer.exe
-:: Intentar quitar apps UWP usando DISM (requiere permisos de admin)
+
+:: Quitar paquetes preinstalados de Xbox usando DISM
 echo Intentando quitar paquetes preinstalados de Xbox...
-DISM /Online /Remove-ProvisionedAppxPackage /PackageName:Microsoft.XboxGamingOverlay_*
-DISM /Online /Remove-ProvisionedAppxPackage /PackageName:Microsoft.XboxGameCallableUI_*
-DISM /Online /Remove-ProvisionedAppxPackage /PackageName:Microsoft.XboxIdentityProvider_*
-DISM /Online /Remove-ProvisionedAppxPackage /PackageName:Microsoft.GamingApp_*
-timeout /t 2 >nul
-
-@echo off
-title Eliminando Bloatware en Windows 11
-cls
-
-:: Verifica privilegios de administrador
-net session >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] Este script debe ejecutarse como Administrador.
-    pause
-    exit /b
+dism /online /get-provisionedappxpackages | findstr "XboxGamingOverlay" >nul && (
+    dism /online /remove-provisionedappxpackage /packagename:Microsoft.XboxGamingOverlay_* >nul 2>&1
 )
+dism /online /get-provisionedappxpackages | findstr "XboxGameCallableUI" >nul && (
+    dism /online /remove-provisionedappxpackage /packagename:Microsoft.XboxGameCallableUI_* >nul 2>&1
+)
+dism /online /get-provisionedappxpackages | findstr "XboxIdentityProvider" >nul && (
+    dism /online /remove-provisionedappxpackage /packagename:Microsoft.XboxIdentityProvider_* >nul 2>&1
+)
+dism /online /get-provisionedappxpackages | findstr "GamingApp" >nul && (
+    dism /online /remove-provisionedappxpackage /packagename:Microsoft.GamingApp_* >nul 2>&1
+)
+
+:: Eliminar paquetes UWP de Xbox para el usuario actual
+echo Eliminando aplicaciones de Xbox para el usuario actual...
+powershell -Command "Get-AppxPackage *Xbox* | Remove-AppxPackage -ErrorAction SilentlyContinue"
+powershell -Command "Get-AppxPackage *GamingApp* | Remove-AppxPackage -ErrorAction SilentlyContinue"
+
+echo.
+echo Proceso completado. Widgets y componentes de Xbox han sido desactivados/eliminados.
+echo Es posible que necesites reiniciar para que todos los cambios surtan efecto completo.
+timeout /t 5 >nul
 
 echo =============================================
 echo 30. DESHABILITAR SERVICIOS INNECESARIOS
@@ -495,10 +572,30 @@ echo =============================================
 echo 31. DESHABILITAR WIDGETS Y COMPONENTES LIGEROS
 echo =============================================
 echo Deshabilitando Widgets y WebExperience...
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v TaskbarDa /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Dsh" /v AllowNewsAndInterests /t REG_DWORD /d 0 /f
-powershell -Command "Get-AppxPackage *WebExperience* | Remove-AppxPackage"
-echo Widgets eliminados.
+:: Método de registro para deshabilitar widgets en el taskbar
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v TaskbarDa /t REG_DWORD /d 0 /f >nul 2>&1
+if %errorlevel% equ 0 (
+    echo Widgets deshabilitados via registro.
+) else (
+    echo Advertencia: No se pudo modificar el registro. Continuando con otros métodos.
+)
+
+:: Política de grupo para deshabilitar noticias e intereses
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Dsh" /v AllowNewsAndInterests /t REG_DWORD /d 0 /f >nul 2>&1
+
+:: Eliminar el paquete WebExperience (widgets) - método más efectivo en Windows 11
+powershell -Command "try { Get-AppxPackage -AllUsers *WebExperience* | Remove-AppxPackage -AllUsers -ErrorAction Stop } catch { Write-Host 'Intentando eliminar para usuario actual...'; Get-AppxPackage *WebExperience* | Remove-AppxPackage }"
+if %errorlevel% equ 0 (
+    echo Widgets eliminados exitosamente.
+) else (
+    echo Advertencia: No se pudieron eliminar todos los componentes de widgets.
+)
+
+:: Reiniciar el explorador para aplicar cambios (opcional pero recomendado)
+echo Reiniciando el explorador para aplicar cambios...
+taskkill /f /im explorer.exe >nul 2>&1
+start explorer.exe
+echo Widgets y componentes relacionados deshabilitados lo máximo posible.
 echo.
 
 echo =============================================
@@ -506,9 +603,14 @@ echo 32. OPTIMIZAR EFECTOS VISUALES (SIN BORRAR FONDO)
 echo =============================================
 echo Aplicando tema visual ligero (transparencia y animaciones)...
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v EnableTransparency /t REG_DWORD /d 0 /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v AppsUseLightTheme /t REG_DWORD /d 0 /f
-reg add "HKCU\Control Panel\Desktop\WindowMetrics" /v MinAnimate /t REG_SZ /d 0 /f
+reg add "HKCU\Control Panel\Desktop" /v UserPreferencesMask /t REG_BINARY /d 9012038010000000 /f
+reg add "HKCU\Control Panel\Desktop\WindowMetrics" /v MinAnimate /t REG_DWORD /d 0 /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" /v VisualFXSetting /t REG_DWORD /d 2 /f
 reg add "HKCU\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\Bags\AllFolders\Shell" /v FolderType /t REG_SZ /d NotSpecified /f
+:: Restablecer caché de iconos y configuración de carpetas
+taskkill /f /im explorer.exe >nul 2>&1
+timeout /t 2 >nul
+start explorer.exe
 echo Tema visual optimizado. El fondo de pantalla no se modifica.
 echo.
 
@@ -516,9 +618,25 @@ echo =============================================
 echo 33. LIMPIAR PROGRAMAS DE INICIO AUTOMÁTICO
 echo =============================================
 echo Limpiando inicio automático innecesario...
+:: Limpiar inicio de usuario actual
 reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /f >nul 2>&1
 reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" /f >nul 2>&1
+
+:: Limpiar inicio de todos los usuarios (requiere permisos)
+reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /f >nul 2>&1
 reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" /f >nul 2>&1
+
+:: Limpiar carpetas de inicio adicionales
+if exist "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup" (
+    del /q "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\*" >nul 2>&1
+    for /d %%i in ("%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\*") do rd /s /q "%%i" >nul 2>&1
+)
+
+if exist "%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs\Startup" (
+    del /q "%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs\Startup\*" >nul 2>&1
+    for /d %%i in ("%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs\Startup\*") do rd /s /q "%%i" >nul 2>&1
+)
+
 echo Programas de inicio limpiados.
 echo.
 
@@ -526,10 +644,15 @@ echo =============================================
 echo 34. FORZAR USO DE HIBERNACIÓN EN LUGAR DE SUSPENSIÓN
 echo =============================================
 echo Activando hibernación como modo preferido de reposo...
-powercfg -hibernate on
-powercfg /change standby-timeout-ac 0
-powercfg /change standby-timeout-dc 0
-echo Hibernación activada.
+:: Activar hibernación
+powercfg.exe /hibernate on
+:: Desactivar suspensión en modo AC (conectado a corriente)
+powercfg.exe /change standby-timeout-ac 0
+:: Desactivar suspensión en modo DC (batería)
+powercfg.exe /change standby-timeout-dc 0
+:: Verificar que los cambios se aplicaron
+timeout /t 2 /nobreak >nul
+echo Hibernación activada y suspensión desactivada correctamente.
 echo.
 
 echo =============================================
@@ -622,11 +745,86 @@ echo =============================================
 echo ============================================
 echo 36. Reparacion de Disco Duro y Sectores
 echo ============================================
-echo Y | chkdsk C: /F /R /X
-echo S | chkdsk C: /F /R /X
-echo ============================================
-echo CHKDSK se ejecuto y quedo programado.
-echo ============================================
+echo Detectando tipo de disco...
+echo.
+:: Intentar detectar tipo de disco usando PowerShell (método principal)
+set "disk_type="
+set "disk_model="
+set "disk_category=unknown"
+
+:: Método 1: PowerShell (más confiable en Windows 11)
+for /f "tokens=2 delims=:" %%a in ('powershell -command "Get-PhysicalDisk | Select-Object -First 1 MediaType | Format-List" 2^>nul ^| findstr /i "MediaType"') do (
+    set "disk_type=%%a"
+    set "disk_type=!disk_type: =!"
+)
+:: Método 2: Si PowerShell falla, usar WMIC
+if "!disk_type!"=="" (
+    for /f "skip=2 tokens=2,3 delims=," %%a in ('wmic diskdrive get model^,mediatype /format:csv 2^>nul') do (
+        set "disk_model=%%a"
+        set "disk_type=%%b"
+        set "disk_type=!disk_type: =!"
+        if defined disk_type goto :detected
+    )
+)
+
+:detected
+
+:: Limpiar y estandarizar el tipo de disco
+if defined disk_type (
+    set "disk_type=!disk_type: =!"
+    echo Tipo detectado por sistema: !disk_type!
+)
+
+:: Determinar tipo de disco basado en el resultado
+if /i "!disk_type!"=="SSD" (
+    set "disk_category=SSD"
+) else if /i "!disk_type!"=="HDD" (
+    set "disk_category=HDD"
+) else if defined disk_model (
+    :: Revisar modelo para determinar tipo si no se detectó claramente
+    echo !disk_model! | findstr /i /c:"SSD" /c:"NVMe" /c:"Samsung SSD" /c:"Crucial SSD" /c:"WD SSD" /c:"M.2" /c:"PCIe" > nul && (
+        set "disk_category=SSD"
+    ) || (
+        echo !disk_model! | findstr /i /c:"HDD" /c:"Hard" /c:"ST" /c:"WD Blue" /c:"WD Black" /c:"Toshiba" /c:"Seagate" /c:"HGST" /c:"BarraCuda" > nul && (
+            set "disk_category=HDD"
+        )
+    )
+)
+
+if "!disk_category!"=="unknown" (
+    echo No se pudo determinar el tipo exacto del disco
+    set "disk_category=unknown"
+)
+
+echo.
+echo Tipo de disco detectado: !disk_category!
+echo.
+
+:: Ejecutar el comando chkdsk apropiado
+if /i "!disk_category!"=="SSD" (
+    echo ================================================
+    echo  DISCO SSD DETECTADO
+    echo  Ejecutando: chkdsk C: /F /X (optimizado para SSD)
+    echo ================================================
+    echo.
+    echo S | chkdsk C: /F /X < nul
+) else if /i "!disk_category!"=="HDD" (
+    echo ================================================
+    echo  DISCO DURO (HDD) DETECTADO
+    echo  Ejecutando: chkdsk C: /F /R /X (con escaneo de sectores)
+    echo ================================================
+    echo.
+    echo S | chkdsk C: /F /R /X < nul
+) else (
+    echo ================================================
+    echo  TIPO DE DISCO DESCONOCIDO
+    echo  Ejecutando: chkdsk C: /F /X (modo estándar)
+    echo ================================================
+    echo.
+    echo S | chkdsk C: /F /X < nul
+)
+
+echo.
 
 echo ==============================
 echo 37. Para equipos con MAS de 8 GB de RAM
@@ -711,7 +909,6 @@ echo ==============================
 echo ==============================
 echo 38. Eliminando Bloatware...
 echo ==============================
-
 echo ----- Bloqueando reinstalación -----
 reg add "HKLM\SOFTWARE\Policies\Microsoft\WindowsStore" /v AutoDownload /t REG_DWORD /d 2 /f
 reg add "HKLM\SOFTWARE\Policies\Microsoft\WindowsStore" /v DisableStoreApps /t REG_DWORD /d 1 /f
@@ -720,38 +917,41 @@ echo ----- Eliminando Game Bar desde políticas -----
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR" /v AllowGameDVR /t REG_DWORD /d 0 /f
 reg add "HKLM\SOFTWARE\Microsoft\Windows\GameDVR" /v AllowGameDVR /t REG_DWORD /d 0 /f
 
-:: Ejecutar PowerShell desde CMD para desinstalar apps
-powershell -Command "Get-AppxPackage *3DBuilder* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *ZuneMusic* | Remove-AppxPackage"      :: Groove Música
-powershell -Command "Get-AppxPackage *ZuneVideo* | Remove-AppxPackage"      :: Películas y TV
-powershell -Command "Get-AppxPackage *XboxApp* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.XboxGamingOverlay* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.Xbox.TCUI* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.XboxGameOverlay* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.BingNews* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.GetHelp* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.Getstarted* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.MicrosoftSolitaireCollection* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.People* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.SkypeApp* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.MicrosoftOfficeHub* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.Todos* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.WindowsAlarms* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.WindowsFeedbackHub* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.WindowsMaps* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.WindowsSoundRecorder* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.YourPhone* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.MicrosoftStickyNotes* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.OneConnect* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.Wallet* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *XboxGamingOverlay* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *XboxGameCallableUI* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *XboxIdentityProvider* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.GamingApp* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *XboxSpeechToTextOverlay* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.Xbox.TCUI* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.XboxGameOverlay* | Remove-AppxPackage"
-powershell -Command "Get-AppxPackage *Microsoft.XboxGamingOverlay* | Remove-AppxPackage"
+:: Ejecutar PowerShell desde CMD para desinstalar apps - versión actualizada para Windows 11
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.3DBuilder* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.ZuneMusic* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.ZuneVideo* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.XboxApp* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.XboxGameOverlay* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.Xbox.TCUI* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.BingNews* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.GetHelp* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.Getstarted* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.MicrosoftSolitaireCollection* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.People* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.SkypeApp* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.MicrosoftOfficeHub* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.Todos* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.WindowsAlarms* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.WindowsFeedbackHub* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.WindowsMaps* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.WindowsSoundRecorder* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.YourPhone* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.StickyNotes* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.MicrosoftStickyNotes* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.OneConnect* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.Wallet* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.GamingApp* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.XboxIdentityProvider* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.Windows.Photos* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.WindowsCamera* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.WindowsCommunicationsApps* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.WindowsTerminal* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.PowerAutomateDesktop* | Remove-AppxPackage -AllUsers"
+powershell -Command "Get-AppxPackage -AllUsers *Microsoft.OutlookForWindows* | Remove-AppxPackage -AllUsers"
+
+:: Eliminar paquetes provisionados para evitar reinstalación
+powershell -Command "Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName -like '*3DBuilder*' -or $_.DisplayName -like '*ZuneMusic*' -or $_.DisplayName -like '*ZuneVideo*' -or $_.DisplayName -like '*Xbox*' -or $_.DisplayName -like '*BingNews*' -or $_.DisplayName -like '*GetHelp*' -or $_.DisplayName -like '*Getstarted*' -or $_.DisplayName -like '*Solitaire*' -or $_.DisplayName -like '*People*' -or $_.DisplayName -like '*Skype*' -or $_.DisplayName -like '*OfficeHub*' -or $_.DisplayName -like '*Todos*' -or $_.DisplayName -like '*Alarms*' -or $_.DisplayName -like '*FeedbackHub*' -or $_.DisplayName -like '*Maps*' -or $_.DisplayName -like '*SoundRecorder*' -or $_.DisplayName -like '*YourPhone*' -or $_.DisplayName -like '*StickyNotes*' -or $_.DisplayName -like '*OneConnect*' -or $_.DisplayName -like '*Wallet*' -or $_.DisplayName -like '*GamingApp*' -or $_.DisplayName -like '*Terminal*' -or $_.DisplayName -like '*PowerAutomate*' -or $_.DisplayName -like '*Outlook*'} | Remove-AppxProvisionedPackage -Online"
 
 echo ----------------------------
 echo Bloatware eliminado.
@@ -761,6 +961,7 @@ echo ==============================
 echo 39. ACTUALIZAR TODO EL SOFTWARE
 echo ==============================
 start https://www.paypal.com/donate/?hosted_button_id=DMREEX4NSS7V4
+winget upgrade --all --accept-source-agreements --accept-package-agreements
 winget upgrade --all
 
 echo ==============================
