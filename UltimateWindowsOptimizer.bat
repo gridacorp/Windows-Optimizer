@@ -13,9 +13,11 @@ echo ==============================================================
 
 echo Comprobando y activando la Proteccion del Sistema en C:...
 powershell -Command "Enable-ComputerRestore -Drive 'C:\\'" >nul 2>&1
+powershell -ExecutionPolicy Bypass -Command "Enable-ComputerRestore -Drive 'C:\\'" >nul 2>&1
 
 echo Creando punto de restauracion antes de realizar los cambios...
 powershell -Command "Checkpoint-Computer -Description 'Antes de optimizacion Windows 11' -RestorePointType MODIFY_SETTINGS" >nul 2>&1
+powershell -ExecutionPolicy Bypass -Command "Checkpoint-Computer -Description 'Antes de optimizacion Windows 11' -RestorePointType MODIFY_SETTINGS -ErrorAction Stop" >nul 2>&1
 
 if %errorlevel% equ 0 (
     echo.
