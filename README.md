@@ -1,3 +1,9 @@
+![Windows 11](https://img.shields.io/badge/Windows-11-blue?logo=windows)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Category](https://img.shields.io/badge/Category-Optimization-orange)
+
+
+
 ## Optimizador de Windows 11 - Optimización Integral
 Este script en batch está diseñado para realizar una optimización profunda y personalizada de Windows 11. Desactiva efectos visuales, bloquea la telemetría, elimina servicios y aplicaciones innecesarias (como Microsoft Edge y Xbox), ajusta configuraciones de red, energía y rendimiento, con el objetivo de mejorar significativamente la eficiencia del sistema.
 
@@ -38,6 +44,9 @@ Este script en batch está diseñado para realizar una optimización profunda y 
 3. Lee y comprende cada cambio, ya que algunos pueden afectar funcionalidades del sistema.
 
 ---
+> [!CAUTION]
+> **Acciones Críticas:** Este script desactiva **BitLocker** (descifrado de disco) y **Windows Defender** (Antivirus). Asegúrate de entender las implicaciones de seguridad antes de proceder.
+
 ### ⚠️ Descargo de responsabilidad
 Este script se proporciona “tal cual”, sin garantías de ningún tipo.
 Su uso es responsabilidad exclusiva del usuario que lo ejecuta o lo distribuye.
