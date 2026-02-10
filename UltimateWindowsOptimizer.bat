@@ -370,23 +370,6 @@ echo.
 echo ==============================================================
 echo 11. BLOQUEAR TELEMETRÍA, DATOS Y NOTIFICACIONES
 echo ============================================================== 
-Aquí tienes el script combinado y optimizado. He eliminado las repeticiones (ya que tu código original repetía los mismos comandos varias veces), he organizado las tareas por categorías y he añadido una verificación de privilegios de administrador para asegurar que funcione correctamente.
-
-Script de Optimización y Privacidad (Combinado)
-Fragmento de código
-@echo off
-:: Verificar privilegios de Administrador
-net session >nul 2>&1
-if %errorLevel% neq 0 (
-    echo Por favor, ejecuta este script como Administrador.
-    pause
-    exit /b
-)
-
-title Optimizacion de Privacidad y Telemetria - Windows
-echo ====================================================
-echo   Iniciando limpieza de telemetria y diagnosticos
-echo ====================================================
 
 :: --- TELEMETRÍA Y RECOLECCIÓN DE DATOS ---
 echo [1/4] Desactivando telemetria y recoleccion de datos...
