@@ -18,22 +18,8 @@ if %errorlevel% equ 0 (
     echo ADVERTENCIA: No se pudo crear el punto de restauracion.
     echo Es posible que la restauracion del sistema este desactivada.
     echo Te recomendamos crear un punto de restauracion manualmente antes de continuar.
-    echo Causas comunes:
-    echo  - La Proteccion del Sistema esta desactivada (aunque se intento activar).
-    echo  - El sistema esta en una maquina virtual sin soporte completo.
-    echo  - Politicas de grupo o antivirus estan bloqueando la funcion.
-    echo.
-    echo ^>^> Recomendacion: Activala manualmente:
-    echo     1. Presiona Win + R, escribe "sysdm.cpl" y pulsa Enter.
-    echo     2. Ve a la pestaña "Proteccion del sistema".
-    echo     3. Selecciona la unidad C: y haz clic en "Configurar".
-    echo     4. Marca "Activar la proteccion del sistema" y aplica.
-    echo.
-    echo Continuando en 5 segundos...
-    timeout /t 5 >nul
 )
 timeout /t 3 >nul
-
 
 echo ==============================================================
 echo 02. DESACTIVAR BITLOCKER PARA MEJORAR RENDIMIENTO DE DISCO
