@@ -71,13 +71,6 @@ taskkill /f /im NisSrv.exe >nul 2>&1
 taskkill /f /im SenseCncProxy.exe >nul 2>&1
 taskkill /f /im MsSense.exe >nul 2>&1
 
-:: FASE 6: El "Muro" IFEO (Redirección de Binarios)
-echo [+] Bloqueando ejecucion futura de binarios (IFEO)...
-set "defender_exes=MsMpEng.exe MsSense.exe SecurityHealthService.exe MpCmdRun.exe SmartScreen.exe"
-for %%e in (%defender_exes%) do (
-    reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\%%e" /v Debugger /t REG_SZ /d "systray.exe" /f >nul 2>&1
-)
-
 :: FASE 7: Limpieza de Tareas Programadas y App UI
 echo [+] Eliminando tareas programadas y la interfaz de usuario...
 schtasks /delete /tn "Microsoft\Windows\Windows Defender\Windows Defender Cache Maintenance" /f >nul 2>&1
