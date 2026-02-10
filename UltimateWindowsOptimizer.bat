@@ -587,171 +587,76 @@ if /i "%driveType%"=="SSD" (
 echo [OK] Verificacion de disco finalizada.
 timeout /t 2 >nul
 
+
 echo =============================================
 echo 20. Optimizacion de equipos dependiendo RAM
 echo =============================================
 
 setlocal enabledelayedexpansion
 
-:: =====================================================================
-:: BLOQUE 1: Para equipos con MENOS de 8 GB de RAM
-:: =====================================================================
+:: 1. OBTENER RAM TOTAL EN MB (Método seguro para evitar cierres)
+for /f %%A in ('powershell -NoProfile -Command "[math]::Round((Get-CimInstance Win32_PhysicalMemory | Measure-Object Capacity -Sum).Sum / 1MB)"') do set RAM_MB=%%A
 
-echo Verificando RAM para optimizacion extrema...
-REM Obtener la cantidad de RAM en MB
-for /f %%A in ('powershell -Command "[math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory/1MB)" 2^>^&1') do set RAM_MB=%%A
-
-REM Verificar si la obtención de RAM fue exitosa
 if "%RAM_MB%"=="" (
-    echo ERROR: No se pudo determinar la cantidad de RAM del sistema.
-    echo Continuando con la siguiente verificacion.
-    goto CHECK_MAS_8GB
+    echo [!] ERROR: No se pudo determinar la RAM. Saltando al paso 21.
+    goto END_RAM_CHECK
 )
 
-REM Convertir RAM a número y comparar
-set /a RAM_NUM=%RAM_MB% 2>nul
-if %errorlevel% neq 0 (
-    echo ERROR: Valor de RAM invalido.
-    echo Continuando con la siguiente verificacion.
-    goto CHECK_MAS_8GB
+echo [+] RAM Total Detectada: %RAM_MB% MB
+
+:: 2. LOGICA DE SALTO (Umbral: 8GB = 8192 MB)
+if %RAM_MB% LSS 8192 (
+    goto LOW_RAM_LOGIC
+) else (
+    goto HIGH_RAM_LOGIC
 )
 
-REM Verificar si la RAM es mayor o igual a 8GB (8192 MB)
-if %RAM_NUM% geq 8192 (
-    echo.
-    echo [SKIP] RAM >= 8GB detectada. Saltando optimización extrema (< 8GB).
-    echo.
-    goto CHECK_MAS_8GB
-)
+:: =====================================================================
+:: BLOQUE: MENOS DE 8 GB DE RAM (Optimización de Recursos)
+:: =====================================================================
+:LOW_RAM_LOGIC
+echo [!] Sistema con poca RAM. Aplicando optimizacion extrema...
 
-:: *************************************************************
-:: OPTIMIZACION PARA RAM < 8GB (Solo se ejecuta si RAM < 8192 MB)
-:: *************************************************************
-echo ======================================================
-echo SISTEMA CON %RAM_NUM% MB DE RAM (< 8GB)
-echo OPTIMIZACION MAXIMA RENDIMIENTO ACTIVADA
-echo ======================================================
-timeout /t 3 >nul
-
-REM 1. Configurar pagefile ADECUADO para poca RAM
-set /a MIN_SIZE=%RAM_NUM%
-set /a MAX_SIZE=%RAM_NUM%*2
-reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "AutomaticManagedPagefile" /t REG_DWORD /d 0 /f >nul
-reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "PagingFiles" /t REG_MULTI_SZ /d "C:\pagefile.sys %MIN_SIZE% %MAX_SIZE%" /f >nul
-
-REM 2. DESACTIVAR EFECTOS VISUALES (ahorra RAM y CPU)
+:: A. Desactivar efectos visuales innecesarios
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v "EnableTransparency" /t REG_DWORD /d 0 /f >nul
 reg add "HKCU\Control Panel\Desktop" /v "UserPreferencesMask" /t REG_BINARY /d 9012038010000000 /f >nul
-reg add "HKCU\Control Panel\Desktop\WindowMetrics" /v "MinAnimate" /t REG_SZ /d "0" /f >nul
 
-REM 3. DESACTIVAR SERVICIOS CONSUMIDORES DE RAM
+:: B. Desactivar servicios pesados
 sc config SysMain start= disabled >nul
-sc config WSearch start= disabled >nul  
+sc config WSearch start= disabled >nul
 sc config DiagTrack start= disabled >nul
-sc config dmwappushservice start= disabled >nul
 
-REM 4. ELIMINAR BLOATWARE CRÍTICO (ahorra RAM en segundo plano)
-powershell -Command "Get-AppxPackage *Xbox* | Remove-AppxPackage" >nul 2>&1
-powershell -Command "Get-AppxPackage *WindowsStore* | Remove-AppxPackage" >nul 2>&1
-powershell -Command "Get-AppxPackage *OneDrive* | Remove-AppxPackage" >nul 2>&1
-
-REM 5. OPTIMIZAR MEMORIA DEL SISTEMA
-reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "LargeSystemCache" /t REG_DWORD /d 1 /f >nul
-reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "DisablePagingExecutive" /t REG_DWORD /d 1 /f >nul
-
-REM 6. ¡¡¡CAMBIO CRUCIAL!!! - FORZAR ALTO RENDIMIENTO
-powercfg -setactive SCHEME_MAX >nul
-echo =============================================
-echo OPTIMIZACION COMPLETADA - ALTO RENDIMIENTO
-echo =============================================
+echo [OK] Optimización para Low RAM completada.
 goto END_RAM_CHECK
 
 :: =====================================================================
-:: BLOQUE 2: Para equipos con MAS de 8 GB de RAM
+:: BLOQUE: 8 GB O MÁS DE RAM (Optimización de Latencia y Gaming)
 :: =====================================================================
-:CHECK_MAS_8GB
-echo Para equipos con MAS de 8 GB de RAM
-echo Verificando cantidad de memoria RAM...
-for /f "tokens=2 delims==" %%a in ('wmic ComputerSystem get TotalPhysicalMemory /value ^| find "="') do set TotalRAM=%%a
-set /a TotalRAMGB=%TotalRAM% / 1073741824
+:HIGH_RAM_LOGIC
+echo [OK] Sistema con RAM suficiente. Aplicando optimizacion de latencia...
 
-echo Cantidad total de RAM detectada: %TotalRAMGB% GB
+:: A. Gestión avanzada de memoria (Kernel en RAM)
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "DisablePagingExecutive" /t REG_DWORD /d 1 /f >nul
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "LargeSystemCache" /t REG_DWORD /d 1 /f >nul
 
-if %TotalRAMGB% leq 8 (
-    echo.
-    echo [SKIP] RAM <= 8GB. Saltando optimizaciones de bajo latencia para 8GB+.
-    echo.
-    goto END_RAM_CHECK
-)
+:: B. Optimización de CPU y Latencia (Tick rate)
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\kernel" /v "DisableDynamicTick" /t REG_DWORD /d 1 /f >nul
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\PriorityControl" /v "Win32PrioritySeparation" /t REG_DWORD /d 38 /f >nul
 
-:: *************************************************************
-:: OPTIMIZACION PARA RAM > 8GB (Solo se ejecuta si RAM > 8GB)
-:: *************************************************************
-echo ==============================
-echo Sistema cumple con requisitos (mas de 8GB RAM)
-echo Iniciando optimizacion...
-echo ==============================
-timeout /t 3 >nul
+:: C. Optimización de GPU (Programación de GPU acelerada por hardware)
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" /v "HwSchMode" /t REG_DWORD /d 2 /f >nul
 
-REM Detectar si es SSD para optimizaciones específicas
-wmic diskdrive where "MediaType='SSD'" get DeviceID | findstr /i "SSD" >nul && set SSD=1 || set SSD=0
+:: D. Red para baja latencia
+netsh int tcp set global autotuninglevel=normal >nul
+netsh int tcp set global rss=enabled >nul
 
-echo ==============================================================
-echo OPTIMIZACION DE MEMORIA PARA 8GB+ RAM
-echo ==============================================================
-reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "DisablePagingExecutive" /t REG_DWORD /d 1 /f
-reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "LargeSystemCache" /t REG_DWORD /d 1 /f
-reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "IoPageLockLimit" /t REG_DWORD /d 262144 /f
+echo [OK] Optimización para High RAM completada.
+goto END_RAM_CHECK
 
-echo ==============================================================
-echo OPTIMIZACION DE CPU PARA BAJO LATENCIA
-echo ==============================================================
-reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\kernel" /v "DisableDynamicTick" /t REG_DWORD /d 1 /f
-reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\kernel" /v "ClockInterruptsPerSecond" /t REG_DWORD /d 1024 /f
-reg add "HKLM\SYSTEM\CurrentControlSet\Control\PriorityControl" /v "Win32PrioritySeparation" /t REG_DWORD /d 38 /f
-
-echo ==============================================================
-echo SERVICIOS QUE CAUSAN MICRO-STUTTERS (desactivar)
-echo ==============================================================
-sc config Audiosrv start= disabled >nul 2>&1
-sc config AudioEndpointBuilder start= disabled >nul 2>&1
-sc config MMCSS start= disabled >nul 2>&1
-sc config Themes start= disabled >nul 2>&1
-sc config UxSms start= disabled >nul 2>&1
-sc config Sens start= disabled >nul 2>&1
-
-echo ==============================================================
-echo OPTIMIZACION DE GPU PARA GAMING
-echo ==============================================================
-reg add "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" /v "HwSchMode" /t REG_DWORD /d 2 /f
-reg add "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers\Scheduler" /v "EnablePreemption" /t REG_DWORD /d 1 /f
-reg add "HKCU\Software\Microsoft\DirectX\UserGpuPreferences" /v "D3D12Enable" /t REG_DWORD /d 1 /f
-
-REM Solo desactivar SysMain si es SSD
-if "%SSD%"=="1" (
-    echo Sistema detectado como SSD - Desactivando SysMain...
-    sc config SysMain start= disabled
-    sc stop SysMain
-)
-
-echo ==============================================================
-echo OPTIMIZACION DE RED PARA BAJA LATENCIA
-echo ==============================================================
-netsh int tcp set global autotuninglevel=experimental
-netsh int tcp set global ecncapability=disabled
-netsh int tcp set global rss=enabled
-netsh int ip set global taskoffload=disabled
-
-echo ==============================
-echo Optimizacion completada para sistema de 8GB+ RAM
-echo Reinicio recomendado para aplicar todos los cambios
-echo ==============================
-
-:: =====================================================================
-:: FIN DE LA LÓGICA CONDICIONAL DE RAM
-:: =====================================================================
 :END_RAM_CHECK
 endlocal
+echo.
+
 
 echo ==============================================================
 echo 21. GESTIÓN DE NAVEGADORES
