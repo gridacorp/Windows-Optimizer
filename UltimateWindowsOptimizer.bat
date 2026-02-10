@@ -1,5 +1,5 @@
 @echo off
-title Optimizador de Windows 11 - Optimización Integral
+title Optimizador de Windows 11 - Optimizacion Integral
 cls
 
 echo ==============================
