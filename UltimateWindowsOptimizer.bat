@@ -34,50 +34,49 @@ timeout /t 2 >nul
 echo ==============================================================
 echo 03. DEFENDER
 echo ============================================================== 
-:: FASE 1: Preparación y Exclusiones (Preventivo)
-echo [+] Aplicando exclusiones y limites de carga...
-powershell -Command "Set-MpPreference -DisableRealtimeMonitoring $true" >nul 2>&1
-powershell -Command "Add-MpPreference -ExclusionProcess 'MsMpEng.exe'" >nul 2>&1
-powershell -Command "Set-MpPreference -ScanAvgCPULoadFactor 1" >nul 2>&1
-
-:: FASE 2: Desactivación de Protección contra Manipulación (Tamper Protection)
-:: Nota: En versiones modernas, esto suele requerir desactivación manual previa en la UI.
-echo [+] Intentando anular Tamper Protection...
-reg add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v TamperProtection /t REG_DWORD /d 0 /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v TamperProtectionConfig /t REG_DWORD /d 0 /f >nul 2>&1
-
-:: FASE 3: Políticas de Grupo (GPO) y Registro
-echo [+] Deshabilitando politicas de proteccion y telemetria...
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v DisableAntiSpyware /t REG_DWORD /d 1 /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v DisableRealtimeMonitoring /t REG_DWORD /d 1 /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet" /v SpyNetReporting /t REG_DWORD /d 0 /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet" /v SubmitSamplesConsent /t REG_DWORD /d 2 /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\SmartScreen" /v ConfigureAppInstallControl /t REG_DWORD /d 0 /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\SmartScreen" /v ConfigureAppInstallControlEnabled /t REG_DWORD /d 0 /f >nul 2>&1
-
-:: FASE 4: Muerte de Servicios y Drivers
-echo [+] Bloqueando servicios de seguridad y drivers de arranque...
-set "servicios=WinDefend WdNisSvc WdBoot WdFilter wscsvc WdNisDrv Sense"
-for %%s in (%servicios%) do (
-    sc stop %%s >nul 2>&1
-    sc config %%s start= disabled >nul 2>&1
+:: 2. Desactivación de Servicios y Drivers (Evita que los archivos se bloqueen)
+echo [+] Deshabilitando servicios y drivers de Kernel...
+set "list=WinDefend WdFilters WdBoot WdNisDrv WdNisSvc Sense SecurityHealthService wscsvc"
+for %%s in (%list%) do (
     reg add "HKLM\SYSTEM\CurrentControlSet\Services\%%s" /v "Start" /t REG_DWORD /d 4 /f >nul 2>&1
 )
 
-:: FASE 5: Terminación de Procesos Activos
-echo [+] Terminando procesos en ejecucion...
-taskkill /f /im MsMpEng.exe >nul 2>&1
-taskkill /f /im NisSrv.exe >nul 2>&1
-taskkill /f /im SenseCncProxy.exe >nul 2>&1
-taskkill /f /im MsSense.exe >nul 2>&1
+:: 3. Eliminación de la Interfaz (Lógica PowerShell integrada)
+echo [+] Eliminando App de Seguridad (SecHealthUI)...
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+    "$remove_appx = @('SecHealthUI'); $appxpackage = get-appxpackage -allusers; ^
+    $store = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore'; ^
+    $users = @('S-1-5-18'); if (test-path $store) {$users += $((dir $store -ea 0 |where {$_ -like '*S-1-5-21*'}).PSChildName)}; ^
+    foreach ($choice in $remove_appx) { ^
+        foreach ($appx in $($appxpackage |where {$_.Name -like \"*$choice*\"})) { ^
+            $PackageFullName = $appx.PackageFullName; $PackageFamilyName = $appx.PackageFamilyName; ^
+            dism /online /set-nonremovableapppolicy /packagefamily:$PackageFamilyName /nonremovable:0; ^
+            remove-appxpackage -package $PackageFullName -allusers; ^
+            write-host 'Eliminado:' $PackageFullName; ^
+        } ^
+    }"
 
-:: FASE 7: Limpieza de Tareas Programadas y App UI
-echo [+] Eliminando tareas programadas y la interfaz de usuario...
+:: 4. Borrado Físico de Carpetas (Tu código Takeown)
+echo [+] Forzando eliminacion de carpetas de programa...
+set "dirs="C:\ProgramData\Microsoft\Windows Defender" "C:\Program Files\Windows Defender" "C:\Program Files (x86)\Windows Defender" "C:\Program Files\Windows Defender Advanced Threat Protection""
+
+for %%d in (%dirs%) do (
+    if exist %%d (
+        echo Borrando %%d...
+        takeown /f %%d /r /d y >nul 2>&1
+        icacls %%d /grant administrators:F /t >nul 2>&1
+        rd /s /q %%d >nul 2>&1
+    )
+)
+
+:: 5. Políticas de Grupo y Tareas Programadas
+echo [+] Aplicando bloqueos finales y limpiando tareas...
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "DisableRealtimeMonitoring" /t REG_DWORD /d 1 /f >nul 2>&1
+
 schtasks /delete /tn "Microsoft\Windows\Windows Defender\Windows Defender Cache Maintenance" /f >nul 2>&1
 schtasks /delete /tn "Microsoft\Windows\Windows Defender\Windows Defender Cleanup" /f >nul 2>&1
 schtasks /delete /tn "Microsoft\Windows\Windows Defender\Windows Defender Scheduled Scan" /f >nul 2>&1
-schtasks /delete /tn "Microsoft\Windows\Windows Defender\Windows Defender Verification" /f >nul 2>&1
-powershell -Command "Get-AppxPackage *Microsoft.Windows.SecHealthUI* | Remove-AppxPackage" >nul 2>&1
 
 echo ------------------------------------------------------
 echo [OK] Operacion finalizada con exito.
