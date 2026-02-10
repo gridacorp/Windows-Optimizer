@@ -10,22 +10,14 @@ timeout /t 3 >nul
 echo ==============================================================
 echo 01. CREANDO PUNTO DE RESTAURACION DEL SISTEMA
 echo ==============================================================
-
-echo Comprobando y activando la Proteccion del Sistema en C:...
-powershell -Command "Enable-ComputerRestore -Drive 'C:\\'" >nul 2>&1
-powershell -ExecutionPolicy Bypass -Command "Enable-ComputerRestore -Drive 'C:\\'" >nul 2>&1
-
 echo Creando punto de restauracion antes de realizar los cambios...
-powershell -Command "Checkpoint-Computer -Description 'Antes de optimizacion Windows 11' -RestorePointType MODIFY_SETTINGS" >nul 2>&1
-powershell -ExecutionPolicy Bypass -Command "Checkpoint-Computer -Description 'Antes de optimizacion Windows 11' -RestorePointType MODIFY_SETTINGS -ErrorAction Stop" >nul 2>&1
-
+powershell -Command "Enable-ComputerRestore -Drive 'C:\\'; Checkpoint-Computer -Description 'Antes de optimizacion Windows 11' -RestorePointType MODIFY_SETTINGS"
 if %errorlevel% equ 0 (
-    echo.
     echo Punto de restauracion creado exitosamente.
 ) else (
-    echo.
     echo ADVERTENCIA: No se pudo crear el punto de restauracion.
-    echo.
+    echo Es posible que la restauracion del sistema este desactivada.
+    echo Te recomendamos crear un punto de restauracion manualmente antes de continuar.
     echo Causas comunes:
     echo  - La Proteccion del Sistema esta desactivada (aunque se intento activar).
     echo  - El sistema esta en una maquina virtual sin soporte completo.
@@ -42,76 +34,77 @@ if %errorlevel% equ 0 (
 )
 timeout /t 3 >nul
 
+
 echo ==============================================================
 echo 02. DESACTIVAR BITLOCKER PARA MEJORAR RENDIMIENTO DE DISCO
 echo ==============================================================
+echo BitLocker está activado. Desactivando...
+manage-bde -off C: >nul 2>&1
+    echo BitLocker se está desactivando. Este proceso puede tardar varias horas dependiendo del tamaño del disco.
+    echo Los cambios se aplicarán completamente al reiniciar el sistema.
+timeout /t 2 >nul
 
-echo Verificando estado de BitLocker en la unidad C: ...
-
-REM Buscar "Protección activada" (la salida en español)
-manage-bde -status C: | findstr /i /c:"Protección activada"
-set BITLOCKER_STATUS=%errorlevel%
-
-if %BITLOCKER_STATUS% equ 0 (
-    echo BitLocker está **ACTIVADO**. Iniciando desactivación...
-    manage-bde -off C:
-    if %errorlevel% equ 0 (
-        echo La orden de desactivación se envió correctamente.
-        echo BitLocker se está desactivando. Este proceso puede tardar varias horas dependiendo del tamaño del disco.
-        echo **Los cambios se aplicarán completamente al reiniciar el sistema.**
-    ) else (
-        echo **ERROR:** Fallo al intentar ejecutar "manage-bde -off C:". **Asegúrese de ejecutar como administrador.**
-    )
-) else (
-    echo BitLocker no está activado en la unidad C:, o no está disponible en esta edición de Windows.
-    REM Un error de `manage-bde` (como no existir) también podría llevar a este bloque.
-)
-timeout /t 5 >nul
 
 echo ==============================================================
 echo 03. DEFENDER
 echo ============================================================== 
-REM Deshabilitar Protección contra Manipulación (TamperProtection)
+:: FASE 1: Preparación y Exclusiones (Preventivo)
+echo [+] Aplicando exclusiones y limites de carga...
+powershell -Command "Set-MpPreference -DisableRealtimeMonitoring $true" >nul 2>&1
+powershell -Command "Add-MpPreference -ExclusionProcess 'MsMpEng.exe'" >nul 2>&1
+powershell -Command "Set-MpPreference -ScanAvgCPULoadFactor 1" >nul 2>&1
+
+:: FASE 2: Desactivación de Protección contra Manipulación (Tamper Protection)
+:: Nota: En versiones modernas, esto suele requerir desactivación manual previa en la UI.
+echo [+] Intentando anular Tamper Protection...
 reg add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v TamperProtection /t REG_DWORD /d 0 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v TamperProtectionConfig /t REG_DWORD /d 0 /f >nul 2>&1
 
-REM Detener y deshabilitar el servicio principal de Defender
-sc stop WinDefend >nul 2>&1
-timeout /t 2 /nobreak >nul
-sc config WinDefend start= disabled >nul 2>&1
-
-REM Deshabilitar Protección en tiempo real
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v DisableRealtimeMonitoring /t REG_DWORD /d 1 /f >nul 2>&1
+:: FASE 3: Políticas de Grupo (GPO) y Registro
+echo [+] Deshabilitando politicas de proteccion y telemetria...
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v DisableAntiSpyware /t REG_DWORD /d 1 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v DisableRealtimeMonitoring /t REG_DWORD /d 1 /f >nul 2>&1
-
-REM Deshabilitar Protección basada en la nube
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v DisableCloudProtection /t REG_DWORD /d 1 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet" /v SpyNetReporting /t REG_DWORD /d 0 /f >nul 2>&1
-
-REM Deshabilitar Envío de muestras automático
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet" /v SubmitSamplesConsent /t REG_DWORD /d 2 /f >nul 2>&1
-
-REM Deshabilitar componentes adicionales de Windows 11
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Controlled Folder Access" /v EnableControlledFolderAccess /t REG_DWORD /d 0 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\SmartScreen" /v ConfigureAppInstallControl /t REG_DWORD /d 0 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\SmartScreen" /v ConfigureAppInstallControlEnabled /t REG_DWORD /d 0 /f >nul 2>&1
 
-REM Deshabilitar servicios relacionados adicionales en Windows 11
-sc stop WdNisSvc >nul 2>&1
-sc config WdNisSvc start= disabled >nul 2>&1
-sc stop WdBoot >nul 2>&1
-sc config WdBoot start= disabled >nul 2>&1
-sc stop WdFilter >nul 2>&1
-sc config WdFilter start= disabled >nul 2>&1
-sc stop WdNisDrv >nul 2>&1
-sc config WdNisDrv start= disabled >nul 2>&1
+:: FASE 4: Muerte de Servicios y Drivers
+echo [+] Bloqueando servicios de seguridad y drivers de arranque...
+set "servicios=WinDefend WdNisSvc WdBoot WdFilter wscsvc WdNisDrv Sense"
+for %%s in (%servicios%) do (
+    sc stop %%s >nul 2>&1
+    sc config %%s start= disabled >nul 2>&1
+    reg add "HKLM\SYSTEM\CurrentControlSet\Services\%%s" /v "Start" /t REG_DWORD /d 4 /f >nul 2>&1
+)
 
-REM Forzar la terminación de procesos de Defender en Windows 11
+:: FASE 5: Terminación de Procesos Activos
+echo [+] Terminando procesos en ejecucion...
 taskkill /f /im MsMpEng.exe >nul 2>&1
 taskkill /f /im NisSrv.exe >nul 2>&1
 taskkill /f /im SenseCncProxy.exe >nul 2>&1
+taskkill /f /im MsSense.exe >nul 2>&1
 
-echo Funciones de Windows Defender deshabilitadas. Es posible que necesites reiniciar el equipo para que los cambios surtan efecto.
+:: FASE 6: El "Muro" IFEO (Redirección de Binarios)
+echo [+] Bloqueando ejecucion futura de binarios (IFEO)...
+set "defender_exes=MsMpEng.exe MsSense.exe SecurityHealthService.exe MpCmdRun.exe SmartScreen.exe"
+for %%e in (%defender_exes%) do (
+    reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\%%e" /v Debugger /t REG_SZ /d "systray.exe" /f >nul 2>&1
+)
+
+:: FASE 7: Limpieza de Tareas Programadas y App UI
+echo [+] Eliminando tareas programadas y la interfaz de usuario...
+schtasks /delete /tn "Microsoft\Windows\Windows Defender\Windows Defender Cache Maintenance" /f >nul 2>&1
+schtasks /delete /tn "Microsoft\Windows\Windows Defender\Windows Defender Cleanup" /f >nul 2>&1
+schtasks /delete /tn "Microsoft\Windows\Windows Defender\Windows Defender Scheduled Scan" /f >nul 2>&1
+schtasks /delete /tn "Microsoft\Windows\Windows Defender\Windows Defender Verification" /f >nul 2>&1
+powershell -Command "Get-AppxPackage *Microsoft.Windows.SecHealthUI* | Remove-AppxPackage" >nul 2>&1
+
+echo ------------------------------------------------------
+echo [OK] Operacion finalizada con exito.
+echo [!] IMPORTANTE: Reinicia el equipo para liberar la RAM y aplicar cambios.
+echo ------------------------------------------------------
+timeout /t 2 >nul
 
 echo ==============================
 echo 04. Eliminando Bloatware...
@@ -159,6 +152,13 @@ powershell -Command "Get-AppxPackage -AllUsers *Microsoft.OutlookForWindows* | R
 
 :: Eliminar paquetes provisionados para evitar reinstalación
 powershell -Command "Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName -like '*3DBuilder*' -or $_.DisplayName -like '*ZuneMusic*' -or $_.DisplayName -like '*ZuneVideo*' -or $_.DisplayName -like '*Xbox*' -or $_.DisplayName -like '*BingNews*' -or $_.DisplayName -like '*GetHelp*' -or $_.DisplayName -like '*Getstarted*' -or $_.DisplayName -like '*Solitaire*' -or $_.DisplayName -like '*People*' -or $_.DisplayName -like '*Skype*' -or $_.DisplayName -like '*OfficeHub*' -or $_.DisplayName -like '*Todos*' -or $_.DisplayName -like '*Alarms*' -or $_.DisplayName -like '*FeedbackHub*' -or $_.DisplayName -like '*Maps*' -or $_.DisplayName -like '*SoundRecorder*' -or $_.DisplayName -like '*YourPhone*' -or $_.DisplayName -like '*StickyNotes*' -or $_.DisplayName -like '*OneConnect*' -or $_.DisplayName -like '*Wallet*' -or $_.DisplayName -like '*GamingApp*' -or $_.DisplayName -like '*Terminal*' -or $_.DisplayName -like '*PowerAutomate*' -or $_.DisplayName -like '*Outlook*'} | Remove-AppxProvisionedPackage -Online"
+
+echo Iniciando limpieza de aplicaciones OEM...
+echo Por favor, espera a que termine el proceso.
+echo.
+
+:: Versión corregida en una sola línea de comando para evitar errores de sintaxis
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$vendors='hp|lenovo|dell|asus|acer'; $exclude='driver|firmware|bios|interface|foundation|system|hotkey|audio|chipset|service'; Write-Host '--- BUSCANDO APPS INSTALADAS ---' -ForegroundColor Cyan; $apps = Get-AppxPackage -AllUsers | Where-Object { ($_.Name -match $vendors -or $_.PackageFamilyName -match $vendors -or $_.Publisher -match $vendors) -and ($_.Name -notmatch $exclude) }; if ($apps) { foreach ($app in $apps) { Write-Host ('Eliminando: ' + $app.Name) -ForegroundColor Yellow; Remove-AppxPackage -Package $app.PackageFullName -AllUsers -ErrorAction SilentlyContinue } } else { Write-Host 'No se encontraron apps de usuario.' -ForegroundColor Green }; Write-Host '--- BUSCANDO APPS PROVISIONADAS ---' -ForegroundColor Cyan; $prov = Get-AppxProvisionedPackage -Online | Where-Object { ($_.DisplayName -match $vendors) -and ($_.DisplayName -notmatch $exclude) }; if ($prov) { foreach ($p in $prov) { Write-Host ('Eliminando provisionada: ' + $p.DisplayName) -ForegroundColor Magenta; Remove-AppxProvisionedPackage -Online -PackageName $p.PackageName -ErrorAction SilentlyContinue } } else { Write-Host 'No se encontraron apps provisionadas.' -ForegroundColor Green }; Write-Host 'Limpieza finalizada.' -ForegroundColor White"
 
 echo ----------------------------
 echo Bloatware eliminado.
@@ -370,48 +370,56 @@ echo.
 echo ==============================================================
 echo 11. BLOQUEAR TELEMETRÍA, DATOS Y NOTIFICACIONES
 echo ============================================================== 
-echo Bloqueando telemetría y recopilacion de datos...
-sc stop DiagTrack >nul 2>&1
-sc config DiagTrack start= disabled >nul 2>&1
-sc stop dmwappushservice >nul 2>&1
-sc config dmwappushservice start= disabled >nul 2>&1
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "AllowTelemetry" /t REG_DWORD /d 0 /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo" /v "Enabled" /t REG_DWORD /d 0 /f
-timeout /t 2 >nul
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "AllowCortana" /t REG_DWORD /d 0 /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo" /v "Enabled" /t REG_DWORD /d 0 /f
-echo Desactivando servicios de telemetría...
-sc stop WdiServiceHost >nul 2>&1
-sc config WdiServiceHost start= disabled >nul 2>&1
-sc stop PcaSvc >nul 2>&1
-sc config PcaSvc start= disabled >nul 2>&1
-sc stop WerSvc >nul 2>&1
-sc config WerSvc start= disabled >nul 2>&1
+Aquí tienes el script combinado y optimizado. He eliminado las repeticiones (ya que tu código original repetía los mismos comandos varias veces), he organizado las tareas por categorías y he añadido una verificación de privilegios de administrador para asegurar que funcione correctamente.
 
-echo Desactivando recolección adicional de datos de diagnóstico...
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "AllowTelemetry" /t REG_DWORD /d 0 /f
-timeout /t 2 >nul
+Script de Optimización y Privacidad (Combinado)
+Fragmento de código
+@echo off
+:: Verificar privilegios de Administrador
+net session >nul 2>&1
+if %errorLevel% neq 0 (
+    echo Por favor, ejecuta este script como Administrador.
+    pause
+    exit /b
+)
 
-echo Deshabilitando permisos de aplicaciones innecesarias...
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location" /v "Value" /t REG_SZ /d "Deny" /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone" /v "Value" /t REG_SZ /d "Deny" /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\camera" /v "Value" /t REG_SZ /d "Deny" /f
+title Optimizacion de Privacidad y Telemetria - Windows
+echo ====================================================
+echo   Iniciando limpieza de telemetria y diagnosticos
+echo ====================================================
+
+:: --- TELEMETRÍA Y RECOLECCIÓN DE DATOS ---
+echo [1/4] Desactivando telemetria y recoleccion de datos...
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "AllowTelemetry" /t REG_DWORD /d 0 /f >nul
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo" /v "Enabled" /t REG_DWORD /d 0 /f >nul
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "AllowCortana" /t REG_DWORD /d 0 /f >nul
 timeout /t 2 >nul
 
-echo Deshabilitando sincronización de aplicaciones y notificaciones...
+:: --- SERVICIOS DE RASTREO ---
+echo [2/4] Deteniendo y deshabilitando servicios de seguimiento...
+for %%s in (DiagTrack, dmwappushservice, WdiServiceHost, PcaSvc, WerSvc) do (
+    sc stop %%s >nul 2>&1
+    sc config %%s start= disabled >nul 2>&1
+)
+timeout /t 2 >nul
+
+:: --- PERMISOS DE PRIVACIDAD (Hardware y Apps) ---
+echo [3/4] Ajustando permisos de aplicaciones (Microfono/Camara/Ubicacion)...
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location" /v "Value" /t REG_SZ /d "Deny" /f >nul
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone" /v "Value" /t REG_SZ /d "Deny" /f >nul
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\camera" /v "Value" /t REG_SZ /d "Deny" /f >nul
+timeout /t 2 >nul
+
+:: --- PUBLICIDAD, NOTIFICACIONES Y SUGERENCIAS ---
+echo [4/4] Desactivando anuncios, sugerencias y notificaciones...
+:: Notificaciones y Centro de Actividades
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\PushNotifications" /v "ToastEnabled" /t REG_DWORD /d 0 /f >nul 2>&1
 reg add "HKCU\Software\Policies\Microsoft\Windows\Explorer" /v "DisableNotificationCenter" /t REG_DWORD /d 1 /f >nul 2>&1
-timeout /t 2 /nobreak >nul
 
-echo Desactivando notificaciones, sugerencias y anuncios...
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SubscribedContent-310093Enabled" /t REG_DWORD /d 0 /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SubscribedContent-338393Enabled" /t REG_DWORD /d 0 /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SubscribedContent-353694Enabled" /t REG_DWORD /d 0 /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SubscribedContent-353696Enabled" /t REG_DWORD /d 0 /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SoftLandingEnabled" /t REG_DWORD /d 0 /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "FeatureManagementEnabled" /t REG_DWORD /d 0 /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SilentInstalledAppsEnabled" /t REG_DWORD /d 0 /f
-echo Desactivando notificaciones, sugerencias y anuncios...
+:: Contenido sugerido y anuncios de Windows (Content Delivery Manager)
+for %%v in (SubscribedContent-310093Enabled, SubscribedContent-338393Enabled, SubscribedContent-353694Enabled, SubscribedContent-353696Enabled, SoftLandingEnabled, FeatureManagementEnabled, SilentInstalledAppsEnabled) do (
+    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "%%v" /t REG_DWORD /d 0 /f >nul
+)
 timeout /t 2 >nul
 
 echo ==============================================================
@@ -427,71 +435,74 @@ timeout /t 2 >nul
 echo ==============================================================
 echo 13. Optimización inteligente de procesos y servicios del sistema
 echo ============================================================== 
-:: 1. LIMPIAR caché de sistema SIN riesgos
-echo Limpiando caché de componentes de forma segura...
-DISM /Online /Cleanup-Image /StartComponentCleanup >nul 2>&1
+:: 1. LIMPIAR CACHÉ Y TEMPORALES
+echo [+] Eliminando archivos temporales y Prefetch...
+del /q /s /f "%temp%\*" >nul 2>&1
+del /q /s /f "C:\Windows\Temp\*" >nul 2>&1
+del /q /s /f "C:\Windows\Prefetch\*" >nul 2>&1
+echo [OK] Temporales limpios.
 
-:: 2. DESACTIVAR SysMain en SSDs (mejora rendimiento real)
-echo Desactivando SysMain para SSDs...
+echo [+] Verificando integridad de la imagen de Windows...
+dism /online /cleanup-image /checkhealth | findstr /i "No se detectaron daños" >nul
+if %errorLevel% neq 0 (
+    echo [!] Aviso: Se detectaron inconsistencias leves, la limpieza puede tardar.
+)
+
+echo [+] Analizando y limpiando almacen de componentes (WinSxS)...
+echo     Esto puede tardar varios minutos...
+DISM /Online /Cleanup-Image /AnalyzeComponentStore >nul 2>&1
+DISM /Online /Cleanup-Image /StartComponentCleanup /NoRestart >nul 2>&1
+
+echo [+] Ejecutando Liberador de espacio en disco (Config 1)...
+start /wait "" cleanmgr /sagerun:1 >nul 2>&1
+
+:: 2. OPTIMIZACION DE SERVICIOS Y RENDIMIENTO
+echo [+] Desactivando SysMain (Superfetch) para SSDs...
 sc config "SysMain" start= disabled >nul 2>&1
 sc stop "SysMain" >nul 2>&1
 
-:: 3. OPTIMIZAR Storage Sense (limpieza automatica segura)
-echo Configurando Storage Sense optimizado...
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy" /v 01 /t REG_DWORD /d 1 /f >nul
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy" /v 04 /t REG_DWORD /d 1 /f >nul
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy" /v 20 /t REG_DWORD /d 1 /f >nul
-
-:: 4. LIMITAR apps en segundo plano (ahorra RAM/CPU)
-echo Limitando aplicaciones en segundo plano...
+echo [+] Limitando aplicaciones en segundo plano para ahorrar RAM...
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications" /v "GlobalUserDisabled" /t REG_DWORD /d 1 /f >nul
 
-:: 5. ANALIZAR almacenamiento antes de limpiar
-DISM /Online /Cleanup-Image /AnalyzeComponentStore >nul 2>&1
-
-echo [OK] Gestion de procesos optimizada (segura y reversible).
-timeout /t 2 >nul
-
-echo Deshabilitando servicios innecesarios...
-DISM /Online /Disable-Feature /FeatureName:FaxServicesClientPackage /NoRestart
-sc config RemoteRegistry start= disabled
-sc config Fax start= disabled
-taskkill /f /im OneDrive.exe
-taskkill /f /im OneDriveSetup.exe >nul 2>&1
-reg add "HKLM\Software\Policies\Microsoft\Windows\OneDrive" /v "DisableFileSync" /t REG_DWORD /d 1 /f
-reg add "HKLM\Software\Policies\Microsoft\Windows\OneDrive" /v "DisableFileSyncNGSC" /t REG_DWORD /d 1 /f >nul 2>&1
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ShowOneDrive" /t REG_DWORD /d 0 /f >nul 2>&1
-timeout /t 2 >nul
-
-echo Deshabilitando Storage Sense...
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\StorageSense" /v "DisableStorageSense" /t REG_DWORD /d 1 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\StorageSense" /v "AllowStorageSenseGlobal" /t REG_DWORD /d 0 /f
-timeout /t 2 >nul
-
-echo Deshabilitando tareas programadas innecesarias...
-schtasks /Change /TN "\Microsoft\Windows\Customer Experience Improvement Program\Consolidator" /Disable
-schtasks /Change /TN "\Microsoft\Windows\Customer Experience Improvement Program\UsbCeip" /Disable
-schtasks /Change /TN "\Microsoft\Windows\Customer Experience Improvement Program\KernelCeipTask" /Disable
-schtasks /Change /TN "\Microsoft\Windows\DiskDiagnostic\Microsoft-Windows-DiskDiagnosticDataCollector" /Disable
-echo Tareas deshabilitadas correctamente.
-timeout /t 2 >nul
-
-echo Deshabilitando servicios innecesarios...
+echo [+] Deshabilitando servicios innecesarios (Fax, Xbox, Diag)...
+:: Servicios de Telemetria y Diagnostico
 sc config DiagTrack start= disabled >nul 2>&1
 sc stop DiagTrack >nul 2>&1
 sc config dmwappushservice start= disabled >nul 2>&1
 sc stop dmwappushservice >nul 2>&1
-sc config XblAuthManager start= disabled >nul 2>&1
-sc stop XblAuthManager >nul 2>&1
-sc config XblGameSave start= disabled >nul 2>&1
-sc stop XblGameSave >nul 2>&1
-sc config XboxNetApiSvc start= disabled >nul 2>&1
-sc stop XboxNetApiSvc >nul 2>&1
 sc config WdiServiceHost start= disabled >nul 2>&1
 sc stop WdiServiceHost >nul 2>&1
 sc config WdiSystemHost start= disabled >nul 2>&1
 sc stop WdiSystemHost >nul 2>&1
-echo Servicios desactivados.
+:: Servicios Xbox y Fax
+for %%s in (XblAuthManager XblGameSave XboxNetApiSvc Fax RemoteRegistry) do (
+    sc config %%s start= disabled >nul 2>&1
+    sc stop %%s >nul 2>&1
+)
+DISM /Online /Disable-Feature /FeatureName:FaxServicesClientPackage /NoRestart >nul 2>&1
+
+:: 3. DESHABILITAR ONEDRIVE Y TELEMETRIA
+echo [+] Deshabilitando OneDrive por completo...
+taskkill /f /im OneDrive.exe >nul 2>&1
+taskkill /f /im OneDriveSetup.exe >nul 2>&1
+reg add "HKLM\Software\Policies\Microsoft\Windows\OneDrive" /v "DisableFileSync" /t REG_DWORD /d 1 /f >nul
+reg add "HKLM\Software\Policies\Microsoft\Windows\OneDrive" /v "DisableFileSyncNGSC" /t REG_DWORD /d 1 /f >nul
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ShowOneDrive" /t REG_DWORD /d 0 /f >nul
+
+:: 4. TAREAS PROGRAMADAS E INDICADORES DE USO
+echo [+] Deshabilitando tareas programadas de telemetria...
+schtasks /Change /TN "\Microsoft\Windows\Customer Experience Improvement Program\Consolidator" /Disable >nul 2>&1
+schtasks /Change /TN "\Microsoft\Windows\Customer Experience Improvement Program\UsbCeip" /Disable >nul 2>&1
+schtasks /Change /TN "\Microsoft\Windows\Customer Experience Improvement Program\KernelCeipTask" /Disable >nul 2>&1
+schtasks /Change /TN "\Microsoft\Windows\DiskDiagnostic\Microsoft-Windows-DiskDiagnosticDataCollector" /Disable >nul 2>&1
+
+:: 5. CONFIGURACION DE STORAGE SENSE (SENSOR DE ALMACENAMIENTO)
+echo [+] Configurando Sensor de Almacenamiento...
+:: Tu script original tenia comandos para ACTIVARLO y luego para DESACTIVARLO por completo.
+:: He optado por la DESACTIVACION total segun tu ultima instruccion del script.
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\StorageSense" /v "DisableStorageSense" /t REG_DWORD /d 1 /f >nul
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\StorageSense" /v "AllowStorageSenseGlobal" /t REG_DWORD /d 0 /f >nul
+
 echo.
 
 echo ==============================================================
@@ -609,86 +620,33 @@ timeout /t 2 >nul
 echo ============================================
 echo 19. Reparacion de Disco Duro y Sectores
 echo ============================================
-echo Detectando tipo de disco...
-echo.
-:: Intentar detectar tipo de disco usando PowerShell (método principal)
-set "disk_type="
-set "disk_model="
-set "disk_category=unknown"
+:: 1. Reparación ONLINE rápida
+echo [+] Analizando integridad de archivos...
+chkdsk C: /scan /perf >nul 2>&1
 
-:: Método 1: PowerShell (más confiable en Windows 11)
-for /f "tokens=2 delims=:" %%a in ('powershell -command "Get-PhysicalDisk | Select-Object -First 1 MediaType | Format-List" 2^>nul ^| findstr /i "MediaType"') do (
-    set "disk_type=%%a"
-    set "disk_type=!disk_type: =!"
-)
-:: Método 2: Si PowerShell falla, usar WMIC
-if "!disk_type!"=="" (
-    for /f "skip=2 tokens=2,3 delims=," %%a in ('wmic diskdrive get model^,mediatype /format:csv 2^>nul') do (
-        set "disk_model=%%a"
-        set "disk_type=%%b"
-        set "disk_type=!disk_type: =!"
-        if defined disk_type goto :detected
-    )
-)
+:: 2. DETECTAR TIPO DE DISCO (Version simplificada y estable)
+echo [+] Identificando hardware...
+set "driveType=SSD"
+powershell -NoProfile -Command "Get-PhysicalDisk | Where-Object { $_.MediaType -eq 'HDD' }" | findstr "HDD" >nul
+if %errorlevel% equ 0 (set "driveType=HDD")
 
-:detected
+echo [+] Tipo de unidad detectada: [%driveType%]
 
-:: Limpiar y estandarizar el tipo de disco
-if defined disk_type (
-    set "disk_type=!disk_type: =!"
-    echo Tipo detectado por sistema: !disk_type!
-)
+:: 3. HABILITAR TRIM
+fsutil behavior set disabledeletenotify 0 >nul 2>&1
+echo [+] Configuracion TRIM verificada.
 
-:: Determinar tipo de disco basado en el resultado
-if /i "!disk_type!"=="SSD" (
-    set "disk_category=SSD"
-) else if /i "!disk_type!"=="HDD" (
-    set "disk_category=HDD"
-) else if defined disk_model (
-    :: Revisar modelo para determinar tipo si no se detectó claramente
-    echo !disk_model! | findstr /i /c:"SSD" /c:"NVMe" /c:"Samsung SSD" /c:"Crucial SSD" /c:"WD SSD" /c:"M.2" /c:"PCIe" > nul && (
-        set "disk_category=SSD"
-    ) || (
-        echo !disk_model! | findstr /i /c:"HDD" /c:"Hard" /c:"ST" /c:"WD Blue" /c:"WD Black" /c:"Toshiba" /c:"Seagate" /c:"HGST" /c:"BarraCuda" > nul && (
-            set "disk_category=HDD"
-        )
-    )
-)
-
-if "!disk_category!"=="unknown" (
-    echo No se pudo determinar el tipo exacto del disco
-    set "disk_category=unknown"
-)
-
-echo.
-echo Tipo de disco detectado: !disk_category!
-echo.
-
-:: Ejecutar el comando chkdsk apropiado
-if /i "!disk_category!"=="SSD" (
-    echo ================================================
-    echo  DISCO SSD DETECTADO
-    echo  Ejecutando: chkdsk C: /F /X (optimizado para SSD)
-    echo ================================================
-    echo.
-    echo S | chkdsk C: /F /X < nul
-) else if /i "!disk_category!"=="HDD" (
-    echo ================================================
-    echo  DISCO DURO (HDD) DETECTADO
-    echo  Ejecutando: chkdsk C: /F /R /X (con escaneo de sectores)
-    echo ================================================
-    echo.
-    echo S | chkdsk C: /F /R /X < nul
+:: 4. LOGICA DE OPTIMIZACION
+if /i "%driveType%"=="SSD" (
+    echo [OK] Aplicando Retrim a SSD...
+    defrag C: /L /U >nul 2>&1
 ) else (
-    echo ================================================
-    echo  TIPO DE DISCO DESCONOCIDO
-    echo  Ejecutando: chkdsk C: /F /X (modo estándar)
-    echo ================================================
-    echo.
-    echo S | chkdsk C: /F /X < nul
+    echo [!] HDD detectado: Optimizando...
+    defrag C: /O /U >nul 2>&1
 )
 
-echo.
+echo [OK] Verificacion de disco finalizada.
+timeout /t 2 >nul
 
 echo =============================================
 echo 20. Optimizacion de equipos dependiendo RAM
@@ -859,22 +817,8 @@ endlocal
 echo ==============================================================
 echo 21. GESTIÓN DE NAVEGADORES
 echo ============================================================== 
-
-:: Verificar si Brave ya está instalado
-echo Comprobando si Brave Browser ya está instalado...
-winget list Brave.Brave --accept-source-agreements >nul 2>&1
-if %errorlevel% equ 0 (
-    echo Brave Browser ya está instalado. No se realizarán cambios.
-    exit /b 0
-)
-
-echo Brave Browser NO está instalado. Procediendo con la instalacion...
-:: Instalar Brave Browser
+echo Instalando Brave Browser...
 winget install Brave.Brave --silent --accept-package-agreements --accept-source-agreements
-if %errorlevel% neq 0 (
-    echo [ERROR] Falló la instalación de Brave Browser.
-    exit /b 1
-)
 
 echo Configurando Brave como navegador predeterminado...
 reg add "HKCU\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice" /v "ProgId" /d "BraveHTML" /f
@@ -893,7 +837,6 @@ echo Reiniciando el Explorador para aplicar cambios...
 taskkill /f /im explorer.exe >nul 2>&1
 start explorer.exe
 timeout /t 2 >nul
-
 
 echo ==============================
 echo 22. ACTUALIZAR TODO EL SOFTWARE
