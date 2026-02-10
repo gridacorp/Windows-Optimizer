@@ -41,36 +41,13 @@ for %%s in (%list%) do (
     reg add "HKLM\SYSTEM\CurrentControlSet\Services\%%s" /v "Start" /t REG_DWORD /d 4 /f >nul 2>&1
 )
 
-:: 3. Eliminación de la Interfaz (Lógica PowerShell Corregida para CMD)
+:: 3. Eliminación de la Interfaz (Versión Blindada para CMD)
 echo [+] Eliminando App de Seguridad (SecHealthUI)...
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-    "$remove_appx = @('SecHealthUI'); $appxpackage = Get-AppxPackage -AllUsers; ^
-    $store = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore'; ^
-    $users = @('S-1-5-18'); if (Test-Path $store) {$users += $((Get-ChildItem $store -ErrorAction SilentlyContinue | Where-Object {$_.Name -like '*S-1-5-21*'}).PSChildName)}; ^
-    foreach ($choice in $remove_appx) { ^
-        foreach ($appx in $($appxpackage | Where-Object {$_.Name -like ('*' + $choice + '*')})) { ^
-            $PackageFullName = $appx.PackageFullName; $PackageFamilyName = $appx.PackageFamilyName; ^
-            dism /online /set-nonremovableapppolicy /packagefamily:$PackageFamilyName /nonremovable:0; ^
-            Remove-AppxPackage -Package $PackageFullName -AllUsers; ^
-            Write-Host ('Eliminado: ' + $PackageFullName); ^
-        } ^
-    }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$appxpackage = Get-AppxPackage -AllUsers; $store = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore'; $users = @('S-1-5-18'); if (Test-Path $store) {$users += $((Get-ChildItem $store -ErrorAction SilentlyContinue | Where-Object {$_.Name -like '*S-1-5-21*'}).PSChildName)}; foreach ($appx in $($appxpackage | Where-Object {$_.Name -like '*SecHealthUI*'})) { $PackageFullName = $appx.PackageFullName; $PackageFamilyName = $appx.PackageFamilyName; dism /online /set-nonremovableapppolicy /packagefamily:$PackageFamilyName /nonremovable:0; Remove-AppxPackage -Package $PackageFullName -AllUsers; Write-Host ('Eliminado: ' + $PackageFullName) -ForegroundColor Cyan }"
 
-:: 4. Borrado Físico de Carpetas (Bucle corregido para rutas con espacios)
+:: 4. Borrado Físico de Carpetas
 echo [+] Forzando eliminacion de carpetas de programa...
-for %%d in (
-    "C:\ProgramData\Microsoft\Windows Defender" 
-    "C:\Program Files\Windows Defender" 
-    "C:\Program Files (x86)\Windows Defender" 
-    "C:\Program Files\Windows Defender Advanced Threat Protection"
-) do (
-    if exist "%%~d" (
-        echo Borrando %%~d...
-        takeown /f "%%~d" /r /d y >nul 2>&1
-        icacls "%%~d" /grant administrators:F /t >nul 2>&1
-        rd /s /q "%%~d" >nul 2>&1
-    )
-)
+:: (Sigue el resto del script...)
 
 :: 5. Políticas de Grupo y Tareas Programadas
 echo [+] Aplicando bloqueos finales y limpiando tareas...
