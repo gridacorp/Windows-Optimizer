@@ -634,6 +634,7 @@ echo 21. GESTIÓN DE NAVEGADORES
 echo ============================================================== 
 echo Instalando Brave Browser...
 winget install Brave.Brave --silent --accept-package-agreements --accept-source-agreements
+winget install --id Brave.Brave --source winget --silent --accept-package-agreements --accept-source-agreements
 
 echo Configurando Brave como navegador predeterminado...
 reg add "HKCU\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice" /v "ProgId" /d "BraveHTML" /f
