@@ -673,12 +673,17 @@ echo 22. INSTALACIÓN Y ACTUALIZACIÓN DE SOFTWARE
 echo ==============================
 :: Abrir link de apoyo
 start https://www.paypal.com/donate/?hosted_button_id=DMREEX4NSS7V4
+
 echo Instalando VLC Media Player...
-winget install --id VideoLAN.VLC -e --accept-source-agreements --accept-package-agreements
+winget install --id VideoLAN.VLC -e --source winget --accept-source-agreements --accept-package-agreements
+
 echo Instalando WinRAR...
-winget install --id RARLab.WinRAR -e --accept-source-agreements --accept-package-agreements
+winget install --id RARLab.WinRAR -e --source winget --accept-source-agreements --accept-package-agreements
+
 echo Instalando Nomacs...
-winget install --id nomacs.nomacs -e --accept-source-agreements --accept-package-agreements
+winget install --id nomacs.nomacs -e --source winget --accept-source-agreements --accept-package-agreements
+
+
 echo Actualizando todo el software instalado a la ultima version...
 winget upgrade --all --accept-source-agreements --accept-package-agreements
 
