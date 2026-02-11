@@ -4,38 +4,57 @@
 
 
 
-## Optimizador de Windows 11 - Optimización Integral
-Este script en batch está diseñado para realizar una optimización profunda y personalizada de Windows 11. Desactiva efectos visuales, bloquea la telemetría, elimina servicios y aplicaciones innecesarias (como Microsoft Edge y Xbox), ajusta configuraciones de red, energía y rendimiento, con el objetivo de mejorar significativamente la eficiencia del sistema.
+### ⚙️ Funcionalidades principales de Ultimate Windows Optimizer v4.0
 
----
-### 🚀 Funcionalidades principales
-1. **Creación de punto de restauración:** Permite revertir cualquier cambio si algo no funciona correctamente. Es una medida de seguridad esencial antes de modificar el sistema.
-2. **Desactivación de efectos visuales y Fluent Design** (deshabilita transparencias y animaciones innecesarias): Reduce el consumo de GPU y CPU al eliminar animaciones, sombras y transparencias; mejora la fluidez general y la respuesta en equipos con recursos limitados.
-3. **Bloqueo completo de telemetría** (DiagTrack, dmwappushservice, WER): Impide el envío de datos a Microsoft, aumentando la privacidad del usuario y reduciendo procesos en segundo plano que consumen recursos.
-4. **Configuración del modo manual para Windows Update** (`wuauserv` en inicio manual y bloqueo de conexiones a ubicaciones de actualización de Internet): Evita descargas y reinicios inesperados; da control total sobre cuándo y cómo se aplican las actualizaciones, reduciendo uso de red y picos de CPU/Disk durante horas críticas.
-5. **Optimización del arranque mediante `bcdedit`** (establece número de procesadores, `useplatformclock=false`, `disabledynamictick=yes`): Mejora tiempos de arranque y estabilidad al ajustar parámetros del gestor de arranque para un inicio más eficiente y predecible.
-6. **Instalación y configuración de Brave como navegador predeterminado** (instala si no está presente y lo configura como predeterminado): Proporciona un navegador centrado en privacidad y con bloqueo de rastreadores integrado, reduciendo seguimiento y mejorando tiempos de carga en navegación.
-7. **Deshabilitación de Widgets, Cortana y componentes de Xbox** (deshabilita, desinstala y bloquea servicios y tareas relacionadas): Elimina procesos y servicios que consumen memoria y CPU en segundo plano, liberando recursos para aplicaciones principales.
-8. **Aplicación del plan de energía "Alto rendimiento"** (habilita y activa Ultimate Performance o Alto Rendimiento): Mantiene el procesador y hardware en estado de máxima disponibilidad, ideal para juegos y tareas exigentes que requieren respuesta instantánea.
-9. **Optimización de red** (ajustes TCP/IP: habilita RSS, `congestionprovider=cubic`, desactiva IPv6): Mejora la estabilidad y rendimiento de la red, reduce latencias y puede mejorar la experiencia en juegos y transferencias de archivos.
-10. **Limpieza de aplicaciones de inicio y procesos en segundo plano** (elimina entradas en `Run` y desactiva permisos de ejecución en segundo plano): Acelera el arranque del sistema y reduce el consumo sostenido de memoria y CPU durante la sesión.
-11. **Desactivación de Windows Defender y servicios de protección** (protección en tiempo real, basada en la nube y SmartScreen): Reduce el uso de CPU y accesos a disco por escaneos constantes; **solo** recomendable si se dispone de un antivirus alternativo y actualizado.
-12. **Ajuste automático del archivo de paginación** según la memoria RAM instalada (calcula y fija `pagefile`): Optimiza la gestión de memoria virtual para evitar ralentizaciones cuando la RAM se llena; proporciona un tamaño de paginación más adecuado al hardware.
-13. **Desactivación de indexación y búsqueda** (detiene y deshabilita `WSearch`): Reduce la actividad permanente en disco, lo cual es ventajoso en SSDs para mejorar vida útil y disminuir operaciones I/O innecesarias.
-14. **Habilitación del Modo de Juego y aceleración por hardware GPU** (activa Game Mode y configura `HwSchMode`): Prioriza recursos del sistema y la GPU para juegos, mejora la estabilidad y el rendimiento en títulos compatibles.
-15. **Eliminación de bloatware mediante PowerShell y DISM** (quita paquetes UWP de Xbox, Store, Correo, etc.): Libera espacio en disco, reduce procesos y servicios no deseados, y simplifica el sistema para el uso real del usuario.
-16. **Configuración avanzada de privacidad en el registro** (reduce recolección de datos, revoca permisos de micrófono/cámara y desactiva tareas del CEIP): Minimiza la exposición de datos personales y el comportamiento de aplicaciones que acceden a recursos sensibles, mejorando la privacidad general.
-17. **Forzado de hibernación en lugar de suspensión** (activa hibernación y desactiva `standby-timeout` en AC/DC): Conserva el estado de la sesión de forma segura sin depender de la energía en modo suspensión; evita problemas al reanudar en equipos que presentan fallos con sleep.
-18. **Actualización automática de software mediante `winget`** (`winget upgrade --all`): Mantiene las aplicaciones instaladas al día de forma automatizada, reduciendo vulnerabilidades por software desactualizado.
-19. **Desactivación de BitLocker** si está activo en la unidad C: (verifica estado y lo desactiva): Elimina la sobrecarga de cifrado en disco que puede afectar rendimiento en lecturas/escrituras; **solo recomendable** si el cifrado no es requerido por seguridad del usuario.
-20. **Deshabilitación de Game DVR y Game Bar** (ajusta claves de registro pertinentes a 0): Previene grabaciones y procesos de captura en segundo plano que provocan caídas de FPS y uso adicional de recursos durante juegos.
-21. **Ajuste de escalado de GPU y prioridad de CPU** (modifica prioridades de procesos como `explorer`, `chrome` y `Win32PrioritySeparation`): Mejora la asignación de recursos hacia procesos importantes, ofreciendo mayor rendimiento en tareas críticas y reduciendo latencias en aplicaciones prioritarias.
-22. **Deshabilitación de SysMain (Superfetch)** para SSDs (detiene y deshabilita el servicio; optimización condicionada por RAM): Evita actividades de prefetch que no benefician a unidades SSD modernas y reduce uso constante de RAM en equipos con alta memoria.
-23. **Eliminación del límite de ancho de banda de Windows Update** (configura políticas de Delivery Optimization): Permite que las actualizaciones se descarguen sin restricciones cuando se ejecuten manualmente, acelerando el proceso de actualización.
-24. **Deshabilitación de servicios innecesarios** (ej.: Fax, RemoteRegistry, OneDrive): Minimiza la superficie de ataque y reduce procesos y servicios en segundo plano que no aportan utilidad para la mayoría de usuarios.
-25. **Desactivación de Storage Sense** mediante claves de registro: Evita eliminaciones y limpiezas automáticas no deseadas y previene procesos de mantenimiento que pueden consumir recursos en momentos inoportunos.
+1. **Creación automática de punto de restauración + respaldo completo del registro:** Genera punto de restauración del sistema y exporta las 5 colmenas del registro (HKCR, HKCU, HKLM, HKU, HKCC) al Escritorio antes de cualquier modificación; esencial para revertir cambios en equipos de oficina con recursos limitados o flujos de trabajo críticos de diseño/renderizado.
 
+2. **Gestión RAM adaptativa según hardware (<8GB vs ≥8GB):** Detecta automáticamente la memoria total y aplica optimizaciones diferenciadas: para sistemas con <8GB desactiva servicios pesados (SysMain, WSearch) para liberar recursos en equipos de oficina; para ≥8GB activa optimizaciones de latencia (`DisablePagingExecutive=1`) que benefician renderizado 3D y diseño gráfico al mantener el kernel en RAM.
 
+3. **Detección automática SSD/HDD y optimización específica:** Identifica el tipo de almacenamiento mediante PowerShell y aplica TRIM para SSDs (prolongando vida útil en equipos de diseño con cargas intensivas de lectura/escritura) o defragmentación optimizada para HDDs en equipos de oficina antiguos.
+
+4. **Desactivación profunda de Windows Defender (nivel kernel):** Deshabilita servicios y drivers críticos (`WdFilters`, `WdBoot`, `WdNisDrv`), elimina carpetas del sistema mediante `takeown/icacls` y bloquea reinstalación; **requiere antivirus alternativo previo** – especialmente útil en estaciones de renderizado donde los escaneos en tiempo real ralentizan procesos intensivos.
+
+5. **Eliminación inteligente de bloatware con detección OEM automática:** Quita 30+ apps Microsoft preinstaladas y detecta/aplica filtros para apps de fabricantes (HP, Lenovo, Dell, ASUS, Acer) excluyendo drivers críticos; ideal para equipos de oficina con software OEM innecesario que consume recursos limitados.
+
+6. **Configuración del plan de energía "Ultimate Performance":** Habilita el plan oculto de Windows (`e9a42b02-d5df-448d-aa00-03f14749eb61`) + Game Mode activado; mantiene CPU/GPU en estado de máxima disponibilidad sin throttling, crucial para renderizado 3D continuo y flujos de trabajo de diseño gráfico exigentes.
+
+7. **Desactivación completa de indexación y búsqueda:** Detiene y deshabilita permanentemente el servicio `WSearch`, eliminando actividad constante en disco; beneficia especialmente SSDs en equipos de diseño al reducir escrituras innecesarias y prolongar vida útil del almacenamiento.
+
+8. **Ajustes avanzados de GPU para aceleración profesional:** Habilita escalado de GPU (`EnableGPUScaling=1`) y programación por hardware (`HwSchMode=2`); mejora el rendimiento en aplicaciones de diseño (Adobe Suite, Blender) y renderizado aprovechando al máximo la GPU dedicada.
+
+9. **Optimización de arranque mediante bcdedit:** Ajusta parámetros del gestor de arranque (`numproc`, `useplatformclock=false`, `disabledynamictick=yes`) para reducir tiempos de inicio; especialmente útil en equipos de oficina con arranques frecuentes durante jornada laboral.
+
+10. **Desactivación de efectos visuales y Fluent Design:** Elimina transparencias (`EnableTransparency=0`), animaciones (`MinAnimate=0`) y aplica tema visual ligero; reduce carga en GPU/CPU en equipos de oficina con recursos limitados (4-8GB RAM, gráficos integrados), mejorando fluidez en Office y navegación.
+
+11. **Bloqueo total de telemetría y recolección de datos:** Configura `AllowTelemetry=0`, detiene servicios de diagnóstico (DiagTrack, dmwappushservice) y revoca permisos de hardware; aumenta privacidad en entornos corporativos y libera recursos de CPU/RAM para tareas productivas.
+
+12. **Configuración de actualizaciones en modo manual/bloqueado:** Detiene `wuauserv`, configura inicio manual y bloquea conexiones a servidores de Windows Update (`DoNotConnectToWindowsUpdateInternetLocations=1`); evita reinicios inesperados durante renders largos o jornadas críticas en oficina.
+
+13. **Desactivación de BitLocker:** Inicia proceso de descifrado con `manage-bde -off C:` para eliminar sobrecarga de cifrado en disco; **advertencia:** mejora rendimiento en lecturas/escrituras intensivas (renderizado, diseño), pero solo recomendable en equipos sin datos sensibles.
+
+14. **Optimización avanzada de red (TCP/IP):** Habilita RSS (Receive Side Scaling), configura algoritmo de congestión CUBIC y desactiva IPv6; reduce latencias en transferencias de archivos grandes (proyectos de diseño, assets 3D) y mejora estabilidad en conexiones corporativas.
+
+15. **Limpieza inteligente de WinSxS:** Ejecuta análisis previo (`DISM /AnalyzeComponentStore`) seguido de limpieza segura del almacenamiento de componentes; libera espacio crítico en equipos de oficina con SSDs pequeños (<256GB) sin comprometer integridad del sistema.
+
+16. **Forzado de hibernación como modo predeterminado:** Activa hibernación (`powercfg /hibernate on`) y desactiva completamente la suspensión; ideal para equipos de diseño/renderizado que requieren reanudar sesiones largas sin perder trabajo en curso.
+
+17. **Desactivación total de Storage Sense:** Bloquea limpiezas automáticas mediante políticas (`DisableStorageSense=1`); previene eliminación accidental de archivos temporales de diseño/renderizado durante procesos en ejecución.
+
+18. **Instalación automática de software esencial productivo:** Instala Brave Browser (privacidad), VLC (reproducción multimedia), WinRAR (compresión) y Nomacs (visor de imágenes ligero); optimiza equipos de oficina con software mínimo pero funcional sin bloatware innecesario.
+
+19. **Eliminación completa de Widgets y Xbox:** Desactiva Widgets desde registro y políticas, desinstala Windows Web Experience Pack y elimina todos los componentes de Xbox; libera RAM/CPU en equipos de oficina con recursos limitados destinados exclusivamente a productividad.
+
+20. **Ajuste de prioridad de CPU para aplicaciones críticas:** Configura `Win32PrioritySeparation=38` y asigna prioridad alta a procesos como `explorer`, `chrome`; mejora respuesta en interfaces de diseño (Photoshop, Illustrator) y reduce micro-estancamientos durante renderizado.
+
+21. **Desactivación de OneDrive y sincronización en la nube:** Termina procesos, desactiva servicios y bloquea sincronización mediante políticas; elimina consumo constante de ancho de banda y CPU en equipos de oficina con conexiones limitadas o proyectos locales sensibles.
+
+22. **Optimización específica para equipos de bajos recursos (<8GB RAM):** Aplica desactivación extrema de efectos visuales, servicios no esenciales (SysMain, WSearch) y limita apps en segundo plano; transforma equipos antiguos en estaciones de oficina funcionales para Word, Excel y navegación ligera.
+
+23. **Optimización específica para renderizado y diseño (≥8GB RAM):** Activa caché del sistema ampliado (`LargeSystemCache=1`), desactiva paginación del kernel y optimiza latencia de CPU/GPU; maximiza throughput en Blender, Maya, Adobe Creative Suite y flujos de trabajo 3D intensivos.
+
+24. **Limpieza profunda de inicio automático:** Elimina entradas en `Run` (usuario y sistema) y carpetas de Startup; reduce tiempo de arranque en equipos de oficina y libera RAM al inicio para aplicaciones productivas inmediatas.
+
+25. **Deshabilitación de Game DVR y Game Bar:** Desactiva captura de pantalla/video en segundo plano; previene caídas de FPS y uso de recursos durante sesiones de diseño gráfico donde se requiere máxima estabilidad de la GPU.
 ---
 ### 🧩 Uso
 
