@@ -19,6 +19,20 @@ if %errorlevel% equ 0 (
     echo Es posible que la restauracion del sistema este desactivada.
     echo Te recomendamos crear un punto de restauracion manualmente antes de continuar.
 )
+
+:: Definir la ruta del escritorio y la carpeta de respaldo
+set "BACKUP_PATH=%USERPROFILE%\Desktop\Backup_Registro"
+mkdir "%BACKUP_PATH%"
+
+echo Creando respaldo del registro en el Escritorio...
+
+:: Exportar las 5 colmenas principales
+reg export HKEY_CLASSES_ROOT "%BACKUP_PATH%\1_HKCR.reg" /y
+reg export HKEY_CURRENT_USER "%BACKUP_PATH%\2_HKCU.reg" /y
+reg export HKEY_LOCAL_MACHINE "%BACKUP_PATH%\3_HKLM.reg" /y
+reg export HKEY_USERS "%BACKUP_PATH%\4_HKU.reg" /y
+reg export HKEY_CURRENT_CONFIG "%BACKUP_PATH%\5_HKCC.reg" /y
+
 timeout /t 3 >nul
 
 echo ==============================================================
