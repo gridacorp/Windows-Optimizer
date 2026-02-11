@@ -3,6 +3,7 @@
 ![Category](https://img.shields.io/badge/Category-Optimization-orange)
 
 
+<img width="765" height="576" alt="image" src="https://github.com/user-attachments/assets/6549d4aa-5e49-457a-b0e0-2cbc18dccc18" />
 
 ### ⚙️ Funcionalidades principales de Ultimate Windows Optimizer v4.0
 
