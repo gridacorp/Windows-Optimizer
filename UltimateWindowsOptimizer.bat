@@ -48,28 +48,45 @@ timeout /t 2 >nul
 echo ==============================================================
 echo 03. DEFENDER
 echo ============================================================== 
+:: 1. INTENTAR MATAR PROCESOS (Para liberar carpetas)
+echo [+] Deteniendo procesos activos...
+taskkill /f /im MsMpEng.exe /t >nul 2>&1
+taskkill /f /im SecurityHealthService.exe /t >nul 2>&1
+
+:: 2. BLOQUEO DE REGISTRO (SERVICIOS Y KERNEL)
 echo [+] Deshabilitando servicios y drivers de Kernel...
+set "base=HKLM\SYSTEM\CurrentControlSet\Services"
 set "list=WinDefend WdFilters WdBoot WdNisDrv WdNisSvc Sense SecurityHealthService wscsvc"
-for %%s in (%list%) do ( reg add "HKLM\SYSTEM\CurrentControlSet\Services\%%s" /v "Start" /t REG_DWORD /d 4 /f >nul 2>&1 )
 
-echo [+] Eliminando App de Seguridad (SecHealthUI)...
-:: TODO EL COMANDO EN UNA SOLA LÍNEA PARA EVITAR QUE CMD SE ROMPA:
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$appx = Get-AppxPackage -AllUsers *SecHealthUI*; if ($appx) { $PackageFamilyName = $appx.PackageFamilyName; dism /online /set-nonremovableapppolicy /packagefamily:$PackageFamilyName /nonremovable:0; Remove-AppxPackage -Package $appx.PackageFullName -AllUsers; Write-Host 'Eliminado: SecHealthUI' -ForegroundColor Green } else { Write-Host 'SecHealthUI no encontrada.' -ForegroundColor Yellow }"
-
-echo [+] Forzando eliminacion de carpetas de programa...
-for %%d in ("C:\ProgramData\Microsoft\Windows Defender" "C:\Program Files\Windows Defender" "C:\Program Files (x86)\Windows Defender" "C:\Program Files\Windows Defender Advanced Threat Protection") do (
-    if exist "%%~d" (
-        echo Borrando %%~d...
-        takeown /f "%%~d" /r /d y >nul 2>&1
-        icacls "%%~d" /grant administrators:F /t >nul 2>&1
-        rd /s /q "%%~d" >nul 2>&1
-    )
+for %%s in (%list%) do ( 
+    reg add "%base%\%%s" /v "Start" /t REG_DWORD /d 4 /f >nul 2>&1 
 )
 
+:: 3. POLÍTICAS DE GRUPO (GPEDIT)
+echo [+] Aplicando politicas de restriccion...
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "DisableRealtimeMonitoring" /t REG_DWORD /d 1 /f >nul 2>&1
+
+:: 4. ELIMINAR INTERFAZ Y ICONOS
+echo [+] Eliminando SecHealthUI y arranque...
+reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "SecurityHealth" /f >nul 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$appx = Get-AppxPackage -AllUsers *SecHealthUI*; if ($appx) { $PackageFamilyName = $appx.PackageFamilyName; dism /online /set-nonremovableapppolicy /packagefamily:$PackageFamilyName /nonremovable:0; Remove-AppxPackage -Package $appx.PackageFullName -AllUsers }" >nul 2>&1
+
+:: 5. LIMPIEZA DE TAREAS PROGRAMADAS
 echo [+] Limpiando tareas programadas...
 schtasks /delete /tn "Microsoft\Windows\Windows Defender\Windows Defender Cache Maintenance" /f >nul 2>&1
 schtasks /delete /tn "Microsoft\Windows\Windows Defender\Windows Defender Cleanup" /f >nul 2>&1
 schtasks /delete /tn "Microsoft\Windows\Windows Defender\Windows Defender Scheduled Scan" /f >nul 2>&1
+
+:: 6. BORRADO DE CARPETAS (Solo funcionara si el proceso cedio o estas en Modo Seguro)
+echo [+] Intentando borrar carpetas de programa...
+for %%d in ("C:\ProgramData\Microsoft\Windows Defender" "C:\Program Files\Windows Defender" "C:\Program Files (x86)\Windows Defender") do (
+    if exist "%%~d" (
+        takeown /f "%%~d" /r /d y >nul 2>&1
+        icacls "%%~d" /grant administradores:F /t >nul 2>&1
+        rd /s /q "%%~d" >nul 2>&1
+    )
+)
 
 echo ------------------------------------------------------
 echo [OK] Operacion finalizada con exito.
