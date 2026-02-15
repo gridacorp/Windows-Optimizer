@@ -538,6 +538,22 @@ start explorer.exe
 echo Tema visual optimizado. El fondo de pantalla no se modifica.
 echo.
 
+echo [+] Optimizando proceso de Entrada de Texto (TextInputHost)...
+set "folderName=MicrosoftWindows.Client.CBS_cw5n1h2txyewy"
+set "targetDir=%SystemRoot%\SystemApps\%folderName%"
+
+if exist "%targetDir%" (
+    takeown /f "%targetDir%" /r /d s >nul
+    icacls "%targetDir%" /grant *S-1-5-32-544:F /t >nul
+    taskkill /f /im TextInputHost.exe >nul 2>&1
+    ren "%targetDir%" "%folderName%.old"
+    echo [OK] Proceso deshabilitado exitosamente.
+) else (
+    echo [!] La carpeta ya estaba modificada o no se encuentra.
+)
+
+echo.
+
 echo ==============================================================
 echo 18. CONFIGURACIÓN DE ACTUALIZACIONES Y OPTIMIZACIÓN DE WINDOWS UPDATE
 echo ============================================================== 
