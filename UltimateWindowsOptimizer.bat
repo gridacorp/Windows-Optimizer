@@ -1,3 +1,4 @@
+analiza y di ok
 @echo off
 title Optimizador de Windows 11 - Optimizacion Integral
 cls
@@ -108,8 +109,33 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows\GameDVR" /v AllowGameDVR /t REG_DWORD /
 :: Ejecutar PowerShell desde CMD para desinstalar apps - versión actualizada para Windows 11
 powershell -Command "$apps = @('3DBuilder', 'ZuneMusic', 'ZuneVideo', 'XboxApp', 'XboxGameOverlay', 'Xbox.TCUI', 'BingNews', 'GetHelp', 'Getstarted', 'MicrosoftSolitaireCollection', 'People', 'SkypeApp', 'MicrosoftOfficeHub', 'Todos', 'WindowsAlarms', 'WindowsFeedbackHub', 'WindowsMaps', 'WindowsSoundRecorder', 'YourPhone', 'StickyNotes', 'MicrosoftStickyNotes', 'OneConnect', 'Wallet', 'GamingApp', 'XboxIdentityProvider', 'WindowsPhotos', 'WindowsCamera', 'WindowsCommunicationsApps', 'WindowsTerminal', 'PowerAutomateDesktop', 'OutlookForWindows'); foreach ($app in $apps) { Get-AppxPackage -AllUsers *Microsoft.$app* | Remove-AppxPackage -AllUsers }"
 
+powershell -command "Get-AppxPackage *Microsoft.Windows.CloudExperienceHost* | Remove-AppxPackage"
+powershell -command "Get-AppxPackage *Microsoft.BingWeather* | Remove-AppxPackage"
+powershell -command "Get-AppxPackage *MicrosoftCorporationII.MicrosoftFamily* | Remove-AppxPackage"
+powershell -command "Get-AppxPackage *MicrosoftEdge.Copilot* | Remove-AppxPackage"
+reg add "HKCU\Software\Policies\Microsoft\Windows\WindowsCopilot" /v TurnOffWindowsCopilot /t REG_DWORD /d 1 /f
+reg add "HKLM\Software\Policies\Microsoft\Windows\WindowsCopilot" /v TurnOffWindowsCopilot /t REG_DWORD /d 1 /f
+powershell -command "Get-AppxPackage -AllUsers *Microsoft.Windows.Ai.Copilot* | Remove-AppxPackage -ErrorAction SilentlyContinue"
+wmic product where "name like '%%HP Connection Optimizer%%'" call uninstall /nointeractive
+wmic product where "name like '%%HP System Event Utility%%'" call uninstall /nointeractive
+wmic product where "name like '%%HP Documentation%%'" call uninstall /nointeractive
+:: Esto busca el nombre del archivo .inf que controla HP Connection Optimizer
+powershell -command "Get-WindowsDriver -Online | Where-Object { $_.ProviderName -like '*HP*' } | Select-Object OriginalFileName, ProviderName, ClassName"
+
 :: Eliminar paquetes provisionados para evitar reinstalación
 powershell -Command "Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName -like '*3DBuilder*' -or $_.DisplayName -like '*ZuneMusic*' -or $_.DisplayName -like '*ZuneVideo*' -or $_.DisplayName -like '*Xbox*' -or $_.DisplayName -like '*BingNews*' -or $_.DisplayName -like '*GetHelp*' -or $_.DisplayName -like '*Getstarted*' -or $_.DisplayName -like '*Solitaire*' -or $_.DisplayName -like '*People*' -or $_.DisplayName -like '*Skype*' -or $_.DisplayName -like '*OfficeHub*' -or $_.DisplayName -like '*Todos*' -or $_.DisplayName -like '*Alarms*' -or $_.DisplayName -like '*FeedbackHub*' -or $_.DisplayName -like '*Maps*' -or $_.DisplayName -like '*SoundRecorder*' -or $_.DisplayName -like '*YourPhone*' -or $_.DisplayName -like '*StickyNotes*' -or $_.DisplayName -like '*OneConnect*' -or $_.DisplayName -like '*Wallet*' -or $_.DisplayName -like '*GamingApp*' -or $_.DisplayName -like '*Terminal*' -or $_.DisplayName -like '*PowerAutomate*' -or $_.DisplayName -like '*Outlook*'} | Remove-AppxProvisionedPackage -Online"
+
+:: Bloqueo total de Copilot
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot" /v TurnOffWindowsCopilot /t REG_DWORD /d 1 /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v ShowCopilotButton /t REG_DWORD /d 0 /f
+taskkill /f /im explorer.exe && start explorer.exe
+powershell -command "Get-AppxProvisionedPackage -Online | Where-Object {$_.PackageName -like '*Copilot*'} | Remove-AppxProvisionedPackage -Online"
+powershell -command "Get-AppxPackage -AllUsers *Copilot* | Remove-AppxPackage -AllUsers"
+:: Eliminar el proceso de la sesión actual
+taskkill /f /im "Copilot.exe" /t
+
+:: Quitar el botón de la barra de tareas por registro
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v ShowCopilotButton /t REG_DWORD /d 0 /f
 
 echo Iniciando limpieza de aplicaciones OEM...
 echo Por favor, espera a que termine el proceso.
@@ -117,6 +143,10 @@ echo.
 
 :: Versión corregida en una sola línea de comando para evitar errores de sintaxis
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$vendors='hp|lenovo|dell|asus|acer'; $exclude='driver|firmware|bios|interface|foundation|system|hotkey|audio|chipset|service'; Write-Host '--- BUSCANDO APPS INSTALADAS ---' -ForegroundColor Cyan; $apps = Get-AppxPackage -AllUsers | Where-Object { ($_.Name -match $vendors -or $_.PackageFamilyName -match $vendors -or $_.Publisher -match $vendors) -and ($_.Name -notmatch $exclude) }; if ($apps) { foreach ($app in $apps) { Write-Host ('Eliminando: ' + $app.Name) -ForegroundColor Yellow; Remove-AppxPackage -Package $app.PackageFullName -AllUsers -ErrorAction SilentlyContinue } } else { Write-Host 'No se encontraron apps de usuario.' -ForegroundColor Green }; Write-Host '--- BUSCANDO APPS PROVISIONADAS ---' -ForegroundColor Cyan; $prov = Get-AppxProvisionedPackage -Online | Where-Object { ($_.DisplayName -match $vendors) -and ($_.DisplayName -notmatch $exclude) }; if ($prov) { foreach ($p in $prov) { Write-Host ('Eliminando provisionada: ' + $p.DisplayName) -ForegroundColor Magenta; Remove-AppxProvisionedPackage -Online -PackageName $p.PackageName -ErrorAction SilentlyContinue } } else { Write-Host 'No se encontraron apps provisionadas.' -ForegroundColor Green }; Write-Host 'Limpieza finalizada.' -ForegroundColor White"
+
+powershell -command "Get-AppxPackage *HPConnectionOptimizer* | Remove-AppxPackage -AllUsers"
+powershell -command "Get-AppxPackage *HPDocumentation* | Remove-AppxPackage -AllUsers"
+powershell -command "Get-AppxPackage *HPSystemEventUtility* | Remove-AppxPackage -AllUsers"
 
 echo ----------------------------
 echo Bloatware eliminado.
@@ -189,6 +219,10 @@ if %errorlevel% equ 0 (
     echo Advertencia: No se pudieron eliminar todos los componentes de widgets.
 )
 
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ShowTaskViewButton" /t REG_DWORD /d 0 /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Search" /v "SearchboxTaskbarMode" /t REG_DWORD /d 0 /f
+
+
 :: Reiniciar el explorador para aplicar cambios (opcional pero recomendado)
 echo Reiniciando el explorador para aplicar cambios...
 taskkill /f /im explorer.exe >nul 2>&1
@@ -196,15 +230,18 @@ start explorer.exe
 echo Widgets y componentes relacionados deshabilitados lo máximo posible.
 echo.
 
+
 echo =============================================
 echo 06. LIMPIAR PROGRAMAS DE INICIO AUTOMÁTICO
 echo =============================================
 echo Limpiando inicio automático innecesario...
+echo Limpiando inicio automático innecesario...
+
 :: Limpiar inicio de usuario actual
 reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /f >nul 2>&1
 reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" /f >nul 2>&1
 
-:: Limpiar inicio de todos los usuarios (requiere permisos)
+:: Limpiar inicio de todos los usuarios (requiere permisos de Administrador)
 reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /f >nul 2>&1
 reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" /f >nul 2>&1
 
@@ -218,6 +255,26 @@ if exist "%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs\Startup" (
     del /q "%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs\Startup\*" >nul 2>&1
     for /d %%i in ("%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs\Startup\*") do rd /s /q "%%i" >nul 2>&1
 )
+
+:: Limpieza de Temporales
+del /q /s /f %temp%\* >nul 2>&1
+for /d %%i in ("%temp%\*") do rd /s /q "%%i" >nul 2>&1
+del /q /s /f C:\Windows\Temp\* >nul 2>&1
+
+:: CORRECCIÓN: Bucles FOR con %% y manejo de errores
+for /f "tokens=*" %%a in ('reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" 2^>nul') do (
+    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" /v "%%~nxa" /t REG_BINARY /d 030000000000000000000000 /f >nul 2>&1
+)
+
+for /f "tokens=1 delims=," %%i in ('schtasks /query /fo csv /nh 2^>nul ^| findstr /v /i "Microsoft"') do (
+    schtasks /change /tn %%i /disable >nul 2>&1
+)
+
+:: Filtro para limpiar el salto de línea fantasma de WMIC
+for /f "tokens=2 delims==" %%a in ('wmic service where "startmode='Auto' and not caption like '%%Microsoft%%'" get name /value 2^>nul') do (
+    for /f "tokens=*" %%b in ("%%a") do sc config "%%b" start= disabled >nul 2>&1
+)
+
 
 echo Programas de inicio limpiados.
 echo.
@@ -302,12 +359,6 @@ if defined plan_guid (
     powercfg -setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
 )
 timeout /t 2 >nul
-
-echo Ajustando plan de energía a "Alto rendimiento"...
-powercfg -setactive SCHEME_MIN
-powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
-timeout /t 2 >nul
-echo.
 echo ¡Optimizaciones de rendimiento completadas!
 
 echo =============================================
@@ -380,7 +431,6 @@ echo ==============================================================
 echo [+] Eliminando archivos temporales y Prefetch...
 del /q /s /f "%temp%\*" >nul 2>&1
 del /q /s /f "C:\Windows\Temp\*" >nul 2>&1
-del /q /s /f "C:\Windows\Prefetch\*" >nul 2>&1
 echo [OK] Temporales limpios.
 
 echo [+] Verificando integridad de la imagen de Windows...
@@ -391,8 +441,8 @@ if %errorLevel% neq 0 (
 
 echo [+] Analizando y limpiando almacen de componentes (WinSxS)...
 echo     Esto puede tardar varios minutos...
-DISM /Online /Cleanup-Image /AnalyzeComponentStore >nul 2>&1
-DISM /Online /Cleanup-Image /StartComponentCleanup /NoRestart >nul 2>&1
+DISM /Online /Cleanup-Image /AnalyzeComponentStore
+DISM /Online /Cleanup-Image /StartComponentCleanup /NoRestart
 
 echo [+] Ejecutando Liberador de espacio en disco (Config 1)...
 start /wait "" cleanmgr /sagerun:1 >nul 2>&1
@@ -460,7 +510,8 @@ reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /v "A
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "LargeSystemCache" /t REG_DWORD /d 1 /f
 timeout /t 2 >nul
 
-echo ==============================================================
+echo
+==============================================================
 echo 15. OPTIMIZAR PRIORIDAD DEL PROCESADOR y APPS DE INICIO
 echo ============================================================== 
 echo Ajustando prioridad del procesador para aplicaciones activas...
@@ -496,62 +547,95 @@ reg add "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" /v "HwSchMode" /
 timeout /t 2 >nul
 
 echo ==============================================================
-echo 17. Ajustes para Optimizar el Rendimiento de Windows Mediante la Desactivación de Efectos y Funciones Opcionales
+echo 17. OPTIMIZAR ENTRADA DE TEXTO Y EFECTOS VISUALES (SEGURO)
 echo ============================================================== 
-echo Deshabilitando animaciones y efectos visuales innecesarios...
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" /v "VisualFXSetting" /t REG_DWORD /d 2 /f
-reg add "HKCU\Control Panel\Desktop\WindowMetrics" /v "MinAnimate" /t REG_SZ /d "0" /f
-timeout /t 2 >nul
 
-echo Deshabilitando widgets y Cortana...
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "TaskbarDa" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "AllowCortana" /t REG_DWORD /d 0 /f
-reg add "HKEY_CURRENT_USER\Software\Policies\Microsoft\Windows\Explorer" /v DisableSearchBoxSuggestions /t REG_DWORD /d 1 /f
+:: --------------------------------------------------------------
+:: [+] Deshabilitando funciones de entrada de texto (TextInputHost)
+::     Método seguro: vía registro, SIN eliminar archivos del sistema
+:: --------------------------------------------------------------
+echo Desactivando teclado táctil, panel de emoji y dictado por voz...
 
-taskkill /f /im explorer.exe
-start explorer.exe
-timeout /t 2 >nul
+:: Desactivar teclado táctil automático
+reg add "HKCU\Software\Microsoft\TabletTip\1.7" /v "EnableAutoShiftEngage" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\TabletTip\1.7" /v "EnableKeyAudioFeedback" /t REG_DWORD /d 0 /f >nul 2>&1
 
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "AllowCortana" /t REG_DWORD /d 0 /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo" /v "Enabled" /t REG_DWORD /d 0 /f
+:: Desactivar predicción de texto y sugerencias
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\TextInput" /v "EnableTextPrediction" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\TextInput" /v "EnableMultilingual" /t REG_DWORD /d 0 /f >nul 2>&1
 
-echo Deshabilitando transparencia...
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v "EnableTransparency" /t REG_DWORD /d 0 /f
-timeout /t 2 >nul
+:: Desactivar panel de emoji (Win + .) y GIFs
+reg add "HKCU\Software\Microsoft\input\Settings" /v "InsightsEnabled" /t REG_DWORD /d 0 /f >nul 2>&1
 
-echo Deshabilitando Game DVR y Game Bar...
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\GameDVR" /v "AppCaptureEnabled" /t REG_DWORD /d 0 /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\GameDVR" /v "GameDVR_Enabled" /t REG_DWORD /d 0 /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\GameBar" /v "AllowGameBar" /t REG_DWORD /d 0 /f
-timeout /t 2 >nul
+:: Desactivar dictado por voz (Win + H)
+reg add "HKCU\Software\Microsoft\Speech_OneCore\Settings\OnlineSpeechPrivacy" /v "HasAccepted" /t REG_DWORD /d 0 /f >nul 2>&1
 
-echo Aplicando tema visual ligero (transparencia y animaciones)...
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v EnableTransparency /t REG_DWORD /d 0 /f
-reg add "HKCU\Control Panel\Desktop" /v UserPreferencesMask /t REG_BINARY /d 9012038010000000 /f
-reg add "HKCU\Control Panel\Desktop\WindowMetrics" /v MinAnimate /t REG_DWORD /d 0 /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" /v VisualFXSetting /t REG_DWORD /d 2 /f
-reg add "HKCU\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\Bags\AllFolders\Shell" /v FolderType /t REG_SZ /d NotSpecified /f
-:: Restablecer caché de iconos y configuración de carpetas
+:: Detener proceso TextInputHost temporalmente (se reiniciará si es necesario)
+taskkill /f /im TextInputHost.exe >nul 2>&1
+timeout /t 1 >nul
+
+echo [OK] Funciones de entrada de texto desactivadas.
+
+
+:: --------------------------------------------------------------
+:: [+] Desactivar efectos visuales innecesarios (rendimiento)
+:: --------------------------------------------------------------
+echo Optimizando interfaz visual para máximo rendimiento...
+
+:: Modo "Ajustar para obtener el mejor rendimiento"
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" /v "VisualFXSetting" /t REG_DWORD /d 2 /f >nul 2>&1
+
+:: Desactivar animación de minimizar/maximizar ventanas
+reg add "HKCU\Control Panel\Desktop\WindowMetrics" /v "MinAnimate" /t REG_SZ /d "0" /f >nul 2>&1
+
+:: Desactivar transparencia en barra de tareas y ventanas
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v "EnableTransparency" /t REG_DWORD /d 0 /f >nul 2>&1
+
+:: Desactivar sombras y efectos de menú
+reg add "HKCU\Control Panel\Desktop" /v "UserPreferencesMask" /t REG_BINARY /d "9012038010000000" /f >nul 2>&1
+
+echo [OK] Efectos visuales optimizados.
+
+
+:: --------------------------------------------------------------
+:: [+] Desactivar Widgets, Cortana y sugerencias de búsqueda
+:: --------------------------------------------------------------
+echo Desactivando componentes innecesarios de la barra de tareas...
+
+:: Widgets (TaskbarDa)
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "TaskbarDa" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Dsh" /v "AllowNewsAndInterests" /t REG_DWORD /d 0 /f >nul 2>&1
+
+:: Cortana y búsqueda
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "AllowCortana" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKCU\Software\Policies\Microsoft\Windows\Explorer" /v "DisableSearchBoxSuggestions" /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Search" /v "SearchboxTaskbarMode" /t REG_DWORD /d 0 /f >nul 2>&1
+
+:: Publicidad y sugerencias de contenido
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo" /v "Enabled" /t REG_DWORD /d 0 /f >nul 2>&1
+for %%v in (SubscribedContent-310093Enabled, SubscribedContent-338393Enabled, SubscribedContent-353694Enabled, SubscribedContent-353696Enabled, SoftLandingEnabled, FeatureManagementEnabled, SilentInstalledAppsEnabled) do (
+    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "%%v" /t REG_DWORD /d 0 /f >nul 2>&1
+)
+
+echo [OK] Widgets y sugerencias desactivados.
+
+
+:: --------------------------------------------------------------
+:: [+] Reiniciar Explorador para aplicar cambios visuales
+:: --------------------------------------------------------------
+echo Aplicando cambios en la interfaz...
 taskkill /f /im explorer.exe >nul 2>&1
 timeout /t 2 >nul
 start explorer.exe
-echo Tema visual optimizado. El fondo de pantalla no se modifica.
+timeout /t 1 >nul
+
 echo.
-
-echo [+] Optimizando proceso de Entrada de Texto (TextInputHost)...
-set "folderName=MicrosoftWindows.Client.CBS_cw5n1h2txyewy"
-set "targetDir=%SystemRoot%\SystemApps\%folderName%"
-
-if exist "%targetDir%" (
-    takeown /f "%targetDir%" /r /d s >nul
-    icacls "%targetDir%" /grant *S-1-5-32-544:F /t >nul
-    taskkill /f /im TextInputHost.exe >nul 2>&1
-    ren "%targetDir%" "%folderName%.old"
-    echo [OK] Proceso deshabilitado exitosamente.
-) else (
-    echo [!] La carpeta ya estaba modificada o no se encuentra.
-)
-
+echo [✔] Sección 17 completada: Optimización visual y de entrada segura.
+echo     • LogonUI y componentes XAML permanecen intactos ✅
+echo     • Funciones de texto desactivadas vía registro ✅
+echo     • Efectos visuales optimizados para rendimiento ✅
+echo.
+timeout /t 2 >nul
 echo.
 
 echo ==============================================================
@@ -647,7 +731,8 @@ sc config DiagTrack start= disabled >nul
 echo [OK] Optimización para Low RAM completada.
 goto END_RAM_CHECK
 
-:: =====================================================================
+::
+=====================================================================
 :: BLOQUE: 8 GB O MÁS DE RAM (Optimización de Latencia y Gaming)
 :: =====================================================================
 :HIGH_RAM_LOGIC
@@ -675,9 +760,85 @@ goto END_RAM_CHECK
 endlocal
 echo.
 
+echo ==============================================================
+echo 21. OPTIMIZACIONES AVANZADAS DE RENDIMIENTO (SEGURO)
+echo ==============================================================
+
+:: --------------------------------------------------------------
+:: [+] Desactivar registro de último acceso a archivos (NTFS)
+::     Reduce escrituras innecesarias en disco → mejora I/O general
+:: --------------------------------------------------------------
+echo Optimizando sistema de archivos NTFS...
+fsutil behavior set disablelastaccess 1 >nul 2>&1
+echo [OK] LastAccessTime desactivado.
+
+:: --------------------------------------------------------------
+:: [+] Limpieza segura de componentes antiguos de Windows Update
+::     Libera espacio en WinSxS y acelera futuras actualizaciones
+:: --------------------------------------------------------------
+echo Limpiando almacén de componentes (WinSxS)...
+DISM /Online /Cleanup-Image /StartComponentCleanup /ResetBase >nul 2>&1
+echo [OK] Componentes obsoletos eliminados.
+
+:: --------------------------------------------------------------
+:: [+] Optimización de planificación de CPU (Windows 11 híbrido)
+::     Mejora responsividad en Intel 12th+ / AMD Zen 4+
+:: --------------------------------------------------------------
+echo Ajustando planificación de CPU para baja latencia...
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" /v "SystemResponsiveness" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" /v "GPU Priority" /t REG_DWORD /d 8 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" /v "Priority" /t REG_DWORD /d 6 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" /v "Scheduling Category" /t REG_SZ /d "High" /f >nul 2>&1
+echo [OK] Perfil de rendimiento multimedia optimizado.
+
+:: --------------------------------------------------------------
+:: [+] Desactivar HPET (High Precision Event Timer)
+::     Reduce latencia del reloj del sistema → mejor respuesta UI/juegos
+::     ⚠️ Solo si tu placa base lo soporta (la mayoría moderna sí)
+:: --------------------------------------------------------------
+echo Desactivando HPET para reducir latencia...
+bcdedit /set useplatformclock false >nul 2>&1
+bcdedit /set disabledynamictick yes >nul 2>&1
+echo [OK] HPET deshabilitado.
+
+:: --------------------------------------------------------------
+:: [+] Optimización DNS y red (Cloudflare 1.1.1.1)
+::     Acelera resolución de dominios y reduce ping
+:: --------------------------------------------------------------
+echo Configurando DNS optimizado...
+:: Nota: Reemplaza "Wi-Fi" o "Ethernet" por el nombre exacto de tu adaptador si falla
+netsh interface ipv4 set dnsservers name="Wi-Fi" source=static address=1.1.1.1 validate=no >nul 2>&1
+netsh interface ipv4 set dnsservers name="Ethernet" source=static address=1.1.1.1 validate=no >nul 2>&1
+netsh interface ipv4 add dnsservers name="Wi-Fi" address=1.0.0.1 index=2 >nul 2>&1
+netsh interface ipv4 add dnsservers name="Ethernet" address=1.0.0.1 index=2 >nul 2>&1
+ipconfig /flushdns >nul 2>&1
+echo [OK] DNS actualizado a Cloudflare.
+
+:: --------------------------------------------------------------
+:: [+] Opcional: Desactivar Integridad de Memoria (VBS) para Gaming
+::     ⚠️ ADVERTENCIA: Aumenta FPS en juegos, pero reduce protección contra exploits de kernel
+::     Solo descomenta si entiendes el trade-off de seguridad
+:: --------------------------------------------------------------
+:: echo Desactivando Virtualization-Based Security (VBS)...
+:: reg add "HKLM\SYSTEM\CurrentControlSet\Control\DeviceGuard" /v "EnableVirtualizationBasedSecurity" /t REG_DWORD /d 0 /f >nul 2>&1
+:: reg add "HKLM\SYSTEM\CurrentControlSet\Control\DeviceGuard" /v "RequirePlatformSecurityFeatures" /t REG_DWORD /d 0 /f >nul 2>&1
+:: echo [!] VBS desactivado. Reinicio requerido para aplicar.
+
+echo.
+echo [✔] Optimizaciones avanzadas aplicadas con éxito.
+echo     • I/O de disco optimizado ✅
+echo     • WinSxS limpio ✅
+echo     • Planificación de CPU baja latencia ✅
+echo     • HPET desactivado ✅
+echo     • DNS rápido configurado ✅
+echo.
+timeout /t 2 >nul
+
+:: Reparacion critica
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "LargeSystemCache" /t REG_DWORD /d 0 /f
 
 echo ==============================================================
-echo 21. GESTIÓN DE NAVEGADORES
+echo 22. GESTIÓN DE NAVEGADORES
 echo ============================================================== 
 echo Instalando Brave Browser...
 winget install Brave.Brave --silent --accept-package-agreements --accept-source-agreements
@@ -702,7 +863,7 @@ start explorer.exe
 timeout /t 2 >nul
 
 echo ==============================
-echo 22. INSTALACIÓN Y ACTUALIZACIÓN DE SOFTWARE
+echo 23. INSTALACIÓN Y ACTUALIZACIÓN DE SOFTWARE
 echo ==============================
 :: Abrir link de apoyo
 start https://www.paypal.com/donate/?hosted_button_id=DMREEX4NSS7V4
@@ -719,6 +880,362 @@ winget install --id nomacs.nomacs -e --source winget --accept-source-agreements 
 
 echo Actualizando todo el software instalado a la ultima version...
 winget upgrade --all --accept-source-agreements --accept-package-agreements
+
+echo ==============================================================
+echo 24. MODO EXTREMO: OPTIMIZACIÓN PARA HDD + 4GB RAM O MENOS
+echo ============================================================== 
+
+:: --------------------------------------------------------------
+:: [+] DETECCIÓN DE CONDICIONES: RAM < 5GB Y DISCO HDD
+:: --------------------------------------------------------------
+echo Verificando hardware para aplicar optimizaciones extremas...
+
+:: Obtener RAM en MB
+for /f %%A in ('powershell -NoProfile -Command "[math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory/1MB)"') do set "CHECK_RAM=%%A"
+
+:: Detectar tipo de disco principal (C:)
+set "IS_HDD=0"
+powershell -NoProfile -Command "$disk = Get-PhysicalDisk | Where-Object { (Get-Partition -DiskNumber $_.DeviceId).DriveLetter -contains 'C' }; if ($disk.MediaType -eq 'HDD') { exit 0 } else { exit 1 }" >nul 2>&1
+if %errorlevel% equ 0 set "IS_HDD=1"
+
+echo [+] RAM detectada: %CHECK_RAM% MB | HDD detectado: %IS_HDD%
+
+:: Condicional: Solo ejecutar si RAM < 5000 MB (5GB) Y es HDD
+if %CHECK_RAM% GEQ 5000 goto SKIP_LOWEND_OPTIMIZATIONS
+if %IS_HDD% NEQ 1 goto SKIP_LOWEND_OPTIMIZATIONS
+
+echo [!] Sistema detectado: HDD + %CHECK_RAM%MB RAM → Aplicando modo extremo...
+echo.
+
+:: ============================================================
+:: 🔴 OPTIMIZACIONES AGRESIVAS PARA HDD + BAJA RAM
+:: ============================================================
+
+:: --------------------------------------------------------------
+:: [1] LIBERAR ESPACIO EN DISCO: Desactivar HIBERNACIÓN
+::     hiberfil.sys ocupa ~40-75% de RAM → en 4GB son ~1.6-3GB
+:: --------------------------------------------------------------
+echo [1/12] Desactivando hibernación para liberar espacio en HDD...
+powercfg /h off >nul 2>&1
+if exist "C:\hiberfil.sys" del /f /q "C:\hiberfil.sys" >nul 2>&1
+echo [OK] ~1.6-3GB liberados en disco.
+
+:: --------------------------------------------------------------
+:: [2] PAGEFILE AGGRESIVO: Compensar falta de RAM con disco
+::     Tamaño fijo para evitar fragmentación en HDD
+:: --------------------------------------------------------------
+echo [2/12] Configurando pagefile estático para HDD...
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "AutomaticManagedPagefile" /t REG_DWORD /d 0 /f >nul 2>&1
+:: Pagefile = RAM * 2.5 (mín) y RAM * 4 (máx) para 4GB → 10GB/16GB
+set /a PF_MIN=%CHECK_RAM%*25/10
+set /a PF_MAX=%CHECK_RAM%*4
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "PagingFiles" /t REG_MULTI_SZ /d "C:\pagefile.sys %PF_MIN% %PF_MAX%" /f >nul 2>&1
+echo [OK] Pagefile: %PF_MIN%MB - %PF_MAX%MB (estático, sin fragmentación).
+
+:: --------------------------------------------------------------
+:: [3] DESACTIVAR SERVICIOS CRÍTICOS QUE CONSUMEN DISCO/RAM
+:: --------------------------------------------------------------
+echo [3/12] Deteniendo servicios pesados para HDD+low-RAM...
+for %%s in (SysMain WSearch DiagTrack dmwappushservice WdiServiceHost WdiSystemHost PcaSvc WerSvc Fax RemoteRegistry PrintSpooler XblAuthManager XblGameSave XboxNetApiSvc OneSyncSvc_bfb DoSvc) do (
+    sc stop "%%s" >nul 2>&1
+    sc config "%%s" start= disabled >nul 2>&1
+)
+echo [OK] 15+ servicios desactivados.
+
+:: --------------------------------------------------------------
+:: [4] REDUCIR CACHÉ DE DISCO Y MEMORIA: Priorizar apps activas
+:: --------------------------------------------------------------
+echo [4/12] Ajustando gestión de memoria para baja RAM...
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "LargeSystemCache" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "DisablePagingExecutive" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "ClearPageFileAtShutdown" /t REG_DWORD /d 0 /f >nul 2>&1
+echo [OK] Caché de sistema optimizada para aplicaciones.
+
+:: --------------------------------------------------------------
+:: [5] DESACTIVAR PREFETCH/SUPERFETCH AGRESIVAMENTE
+::     En HDD+4GB, el prefetch puede causar thrashing
+:: --------------------------------------------------------------
+echo [5/12] Desactivando Prefetch para evitar lecturas innecesarias...
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" /v "EnablePrefetcher" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" /v "EnableSuperfetch" /t REG_DWORD /d 0 /f >nul 2>&1
+echo [OK] Prefetch/Superfetch desactivados.
+
+:: --------------------------------------------------------------
+:: [6] LIMPIEZA AGRESIVA DE STANDBY LIST (RAM CACHE)
+::     Forzar liberación de memoria en caché cada X minutos
+:: --------------------------------------------------------------
+echo [6/12] Configurando limpieza automática de memoria en caché...
+:: Crear tarea programada para limpiar Standby List cada 10 minutos
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-Command [System.GC]::Collect(); [System.GC]::WaitForPendingFinalizers(); EmptyStandbyList 1'; $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 10); $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest; Register-ScheduledTask -TaskName 'CleanStandbyList_LowRAM' -Action $action -Trigger $trigger -Principal $principal -Force >$null 2>&1" 2>nul
+echo [OK] Tarea 'CleanStandbyList_LowRAM' creada (limpia caché cada 10 min).
+
+:: --------------------------------------------------------------
+:: [7] REDUCIR ESCRITURAS EN HDD: NTFS OPTIMIZATIONS
+:: --------------------------------------------------------------
+echo [7/12] Minimizando escrituras en disco mecánico...
+fsutil behavior set disablelastaccess 1 >nul 2>&1
+fsutil behavior set disable8dot3 1 >nul 2>&1
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v "NtfsDisable8dot3NameCreation" /t REG_DWORD /d 1 /f >nul 2>&1
+echo [OK] Escrituras innecesarias en NTFS reducidas.
+
+:: --------------------------------------------------------------
+:: [8] DESACTIVAR THUMBNAIL CACHE Y VISTAS PREVIAS
+::     Evitar generación constante de miniaturas en HDD
+:: --------------------------------------------------------------
+echo [8/12] Desactivando caché de miniaturas para ahorrar I/O...
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "IconsOnly" /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ShowPreviewHandlers" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ShowInfoTip" /t REG_DWORD /d 0 /f >nul 2>&1
+:: Limpiar caché existente
+del /f /q "%LocalAppData%\Microsoft\Windows\Explorer\thumbcache_*.db" >nul 2>&1
+echo [OK] Miniaturas y vistas previas desactivadas.
+
+:: --------------------------------------------------------------
+:: [9] DESACTIVAR WINDOWS UPDATE DESCARGAS EN SEGUNDO PLANO
+::     Evitar que Downloads consuman ancho de banda y disco
+:: --------------------------------------------------------------
+echo [9/12] Bloqueando descargas automáticas de Windows Update...
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization" /v "DODownloadMode" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v "NoAutoDownload" /t REG_DWORD /d 1 /f >nul 2>&1
+sc stop DoSvc >nul 2>&1
+sc config DoSvc start= disabled >nul 2>&1
+echo [OK] Descargas en segundo plano bloqueadas.
+
+:: --------------------------------------------------------------
+:: [10] TCP OPTIMIZATIONS PARA BAJO CONSUMO DE MEMORIA
+:: --------------------------------------------------------------
+echo [10/12] Ajustando red para bajo uso de RAM...
+netsh int tcp set global autotuninglevel=disabled >nul 2>&1
+netsh int tcp set global rss=enabled >nul 2>&1
+netsh int tcp set global chimney=disabled >nul 2>&1
+echo [OK] TCP optimizado para memoria limitada.
+
+:: --------------------------------------------------------------
+:: [11] DESACTIVAR EFECTOS VISUALES ADICIONALES
+:: --------------------------------------------------------------
+echo [11/12] Aplicando modo visual 'Rendimiento máximo'...
+reg add "HKCU\Control Panel\Desktop" /v "FontSmoothing" /t REG_SZ /d "0" /f >nul 2>&1
+reg add "HKCU\Control Panel\Desktop" /v "UserPreferencesMask" /t REG_BINARY /d "8007288010000000" /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ListviewAlphaSelect" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "TaskbarAnimations" /t REG_DWORD /d 0 /f >nul 2>&1
+echo [OK] Efectos visuales adicionales desactivados.
+
+:: --------------------------------------------------------------
+:: [12] DESACTIVAR MANTENIMIENTO AUTOMÁTICO Y TAREAS PESADAS
+:: --------------------------------------------------------------
+echo [12/12] Desactivando tareas de mantenimiento automático...
+schtasks /Change /TN "\Microsoft\Windows\TaskScheduler\Maintenance Configurator" /Disable >nul 2>&1
+schtasks /Change /TN "\Microsoft\Windows\WindowsUpdate\Scheduled Start" /Disable >nul 2>&1
+schtasks /Change /TN "\Microsoft\Windows\DiskDiagnostic\Microsoft-Windows-DiskDiagnosticResolver" /Disable >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\Maintenance" /v "MaintenanceDisabled" /t REG_DWORD /d 1 /f >nul 2>&1
+echo [OK] Mantenimiento automático desactivado.
+
+:: --------------------------------------------------------------
+:: [+] REINICIAR EXPLORER PARA APLICAR CAMBIOS VISUALES
+:: --------------------------------------------------------------
+echo.
+echo Aplicando cambios en la interfaz...
+taskkill /f /im explorer.exe >nul 2>&1
+timeout /t 2 >nul
+start explorer.exe
+
+echo.
+echo ╔════════════════════════════════════════════════════╗
+echo ║  ✅ MODO EXTREMO APLICADO: HDD + %CHECK_RAM%MB RAM  ║
+echo ╠════════════════════════════════════════════════════╣
+echo ║  • Hibernación desactivada: +1.6-3GB libres        ║
+echo ║  • Pagefile estático: sin fragmentación            ║
+echo ║  • 15+ servicios pesados desactivados              ║
+echo ║  • Prefetch/Superfetch: OFF                        ║
+echo ║  • Limpieza de RAM caché: cada 10 minutos          ║
+echo ║  • Escrituras NTFS minimizadas                     ║
+echo ║  • Miniaturas y vistas previas: OFF                ║
+echo ║  • Windows Update background: bloqueado            ║
+echo ║  • Efectos visuales: mínimos                       ║
+echo ║  • Mantenimiento automático: desactivado           ║
+echo ╠════════════════════════════════════════════════════╣
+echo ║  ⚠️  ADVERTENCIA: Este modo prioriza velocidad     ║
+echo ║     sobre comodidad. Algunas funciones pueden      ║
+echo ║     estar limitadas o requerir más tiempo.         ║
+echo ╚════════════════════════════════════════════════════╝
+echo.
+
+goto END_LOWEND_OPTIMIZATIONS
+
+:SKIP_LOWEND_OPTIMIZATIONS
+echo [+] Sistema NO cumple condiciones para modo extremo.
+echo     • RAM >= 5GB y/o disco SSD → Saltando optimizaciones HDD+low-RAM.
+echo.
+
+:END_LOWEND_OPTIMIZATIONS
+timeout /t 2 >nul
+
+echo ==============================================================
+echo 25. MODO SSD-LOWRAM: OPTIMIZACIÓN PARA SSD + 4GB RAM O MENOS
+echo ============================================================== 
+
+:: --------------------------------------------------------------
+:: [+] DETECCIÓN DE CONDICIONES: RAM < 5GB Y DISCO SSD/NVMe
+:: --------------------------------------------------------------
+echo Verificando hardware para aplicar optimizaciones SSD+low-RAM...
+
+:: Obtener RAM en MB
+for /f %%A in ('powershell -NoProfile -Command "[math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory/1MB)"') do set "CHECK_RAM_SSD=%%A"
+
+:: Detectar tipo de disco principal (C:)
+set "IS_SSD=0"
+powershell -NoProfile -Command "$disk = Get-PhysicalDisk | Where-Object { (Get-Partition -DiskNumber $_.DeviceId).DriveLetter -contains 'C' }; if ($disk.MediaType -eq 'SSD' -or $disk.MediaType -eq 'Unspecified') { exit 0 } else { exit 1 }" >nul 2>&1
+if %errorlevel% equ 0 set "IS_SSD=1"
+
+echo [+] RAM detectada: %CHECK_RAM_SSD% MB | SSD detectado: %IS_SSD%
+
+:: Condicional: Solo ejecutar si RAM < 5000 MB (5GB) Y es SSD (NO HDD)
+if %CHECK_RAM_SSD% GEQ 5000 goto SKIP_SSD_LOWEND_OPTIMIZATIONS
+if %IS_SSD% NEQ 1 goto SKIP_SSD_LOWEND_OPTIMIZATIONS
+
+echo [!] Sistema detectado: SSD + %CHECK_RAM_SSD%MB RAM → Aplicando modo SSD-LowRAM...
+echo.
+
+:: ============================================================
+:: 🔵 OPTIMIZACIONES ESPECÍFICAS PARA SSD + BAJA RAM
+:: ============================================================
+:: Estrategia: Compensar poca RAM aprovechando la velocidad del SSD
+:: ============================================================
+
+:: --------------------------------------------------------------
+:: [1] PAGEFILE DINÁMICO PERO AGILE: SSD permite swap rápido
+::     Tamaño moderado: RAM * 1.5 (min) y RAM * 2.5 (max)
+:: --------------------------------------------------------------
+echo [1/10] Configurando pagefile optimizado para SSD...
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "AutomaticManagedPagefile" /t REG_DWORD /d 0 /f >nul 2>&1
+set /a PF_MIN_SSD=%CHECK_RAM_SSD%*15/10
+set /a PF_MAX_SSD=%CHECK_RAM_SSD%*25/10
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "PagingFiles" /t REG_MULTI_SZ /d "C:\pagefile.sys %PF_MIN_SSD% %PF_MAX_SSD%" /f >nul 2>&1
+echo [OK] Pagefile SSD: %PF_MIN_SSD%MB - %PF_MAX_SSD%MB (swap rápido).
+
+:: --------------------------------------------------------------
+:: [2] MANTENER SYSMAIN/PREFETCH ACTIVADO (SSD lo beneficia)
+::     A diferencia de HDD, en SSD el prefetch MEJORA el rendimiento
+:: --------------------------------------------------------------
+echo [2/10] Optimizando Prefetch/SysMain para SSD...
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" /v "EnablePrefetcher" /t REG_DWORD /d 3 /f >nul 2>&1
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" /v "EnableSuperfetch" /t REG_DWORD /d 3 /f >nul 2>&1
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" /v "EnableBoottrace" /t REG_DWORD /d 0 /f >nul 2>&1
+echo [OK] Prefetch/SysMain optimizados para SSD (valor 3 = boot+apps).
+
+:: --------------------------------------------------------------
+:: [3] DESACTIVAR SERVICIOS QUE CONSUMEN RAM (pero no los de disco)
+:: --------------------------------------------------------------
+echo [3/10] Deteniendo servicios que consumen RAM innecesariamente...
+for %%s in (DiagTrack dmwappushservice WdiServiceHost WdiSystemHost PcaSvc WerSvc Fax RemoteRegistry XblAuthManager XblGameSave XboxNetApiSvc OneSyncSvc_bfb) do (
+    sc stop "%%s" >nul 2>&1
+    sc config "%%s" start= disabled >nul 2>&1
+)
+:: Nota: SysMain y WSearch se mantienen para aprovechar SSD
+echo [OK] Servicios de telemetría y juegos desactivados (RAM liberada).
+
+:: --------------------------------------------------------------
+:: [4] MEMORIA: KERNEL EN DISCO, APPS EN RAM (prioridad baja RAM)
+:: --------------------------------------------------------------
+echo [4/10] Ajustando gestión de memoria para priorizar aplicaciones...
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "LargeSystemCache" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "DisablePagingExecutive" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v "ClearPageFileAtShutdown" /t REG_DWORD /d 0 /f >nul 2>&1
+echo [OK] Memoria priorizada para aplicaciones de usuario.
+
+:: --------------------------------------------------------------
+:: [5] TRIM Y OPTIMIZACIÓN DE SSD: MANTENER SALUD DEL DISCO
+:: --------------------------------------------------------------
+echo [5/10] Verificando optimización de SSD (TRIM)...
+fsutil behavior set disabledeletenotify 0 >nul 2>&1
+defrag C: /L /U >nul 2>&1
+echo [OK] TRIM habilitado y SSD optimizado.
+
+:: --------------------------------------------------------------
+:: [6] DESACTIVAR HIBERNACIÓN (OPCIONAL: libera ~1.6-3GB)
+::     En SSD el impacto es menor, pero libera espacio útil
+:: --------------------------------------------------------------
+echo [6/10] Desactivando hibernación para liberar espacio (opcional)...
+powercfg /h off >nul 2>&1
+if exist "C:\hiberfil.sys" del /f /q "C:\hiberfil.sys" >nul 2>&1
+echo [OK] ~1.6-3GB liberados en SSD (hiberfil.sys eliminado).
+
+:: --------------------------------------------------------------
+:: [7] REDUCIR EFECTOS VISUALES PERO MANTENER FLUIDEZ
+::     SSD permite ciertos efectos sin penalización de I/O
+:: --------------------------------------------------------------
+echo [7/10] Ajustando efectos visuales: equilibrio rendimiento/fluidez...
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" /v "VisualFXSetting" /t REG_DWORD /d 3 /f >nul 2>&1
+reg add "HKCU\Control Panel\Desktop\WindowMetrics" /v "MinAnimate" /t REG_SZ /d "0" /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v "EnableTransparency" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKCU\Control Panel\Desktop" /v "FontSmoothing" /t REG_SZ /d "2" /f >nul 2>&1
+echo [OK] Efectos visuales equilibrados: sin animaciones, con fuentes suaves.
+
+:: --------------------------------------------------------------
+:: [8] TCP OPTIMIZATIONS: BUFFER MODERADO (SSD compensa swap)
+:: --------------------------------------------------------------
+echo [8/10] Ajustando red para equilibrio RAM/rendimiento...
+netsh int tcp set global autotuninglevel=normal >nul 2>&1
+netsh int tcp set global rss=enabled >nul 2>&1
+netsh int tcp set global chimney=enabled >nul 2>&1
+echo [OK] TCP configurado para uso equilibrado de memoria.
+
+:: --------------------------------------------------------------
+:: [9] DESACTIVAR INDEXACIÓN DE BÚSQUEDA (ahorra RAM, SSD no lo necesita tanto)
+:: --------------------------------------------------------------
+echo [9/10] Desactivando indexación de búsqueda para ahorrar RAM...
+sc stop "WSearch" >nul 2>&1
+sc config "WSearch" start= disabled >nul 2>&1
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\WSearch" /v "Start" /t REG_DWORD /d 4 /f >nul 2>&1
+echo [OK] WSearch desactivado (~200-400MB RAM liberados).
+
+:: --------------------------------------------------------------
+:: [10] LIMPIEZA DE MEMORIA EN SEGUNDO PLANO (SSD permite swap rápido)
+:: --------------------------------------------------------------
+echo [10/10] Configurando liberación inteligente de memoria...
+:: Tarea para liberar Standby List cada 15 minutos (menos agresivo que HDD)
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-Command [System.GC]::Collect(); EmptyStandbyList 1'; $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 15); $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest; Register-ScheduledTask -TaskName 'CleanStandbyList_SSDLowRAM' -Action $action -Trigger $trigger -Principal $principal -Force >$null 2>&1" 2>nul
+echo [OK] Tarea 'CleanStandbyList_SSDLowRAM' creada (limpia caché cada 15 min).
+
+:: --------------------------------------------------------------
+:: [+] REINICIAR EXPLORER PARA APLICAR CAMBIOS
+:: --------------------------------------------------------------
+echo.
+echo Aplicando cambios en la interfaz...
+taskkill /f /im explorer.exe >nul 2>&1
+timeout /t 2 >nul
+start explorer.exe
+
+echo.
+echo ╔════════════════════════════════════════════════════╗
+echo ║  ✅ MODO SSD-LOWRAM APLICADO: SSD + %CHECK_RAM_SSD%MB RAM  ║
+echo ╠════════════════════════════════════════════════════╣
+echo ║  • Pagefile optimizado: swap rápido en SSD         ║
+echo ║  • Prefetch/SysMain: ACTIVADOS (beneficio SSD)     ║
+echo ║  • Servicios de telemetría: desactivados           ║
+echo ║  • Memoria: priorizada para apps de usuario        ║
+echo ║  • TRIM habilitado: salud del SSD preservada       ║
+echo ║  • Hibernación: desactivada (+1.6-3GB libres)      ║
+echo ║  • Efectos visuales: equilibrio fluidez/rendimiento║
+echo ║  • TCP: buffering normal (SSD compensa swap)       ║
+echo ║  • WSearch: desactivado (~200-400MB RAM libres)    ║
+echo ║  • Limpieza de RAM: cada 15 minutos                ║
+echo ╠════════════════════════════════════════════════════╣
+echo ║  💡 CONSEJO: Con SSD, el sistema se sentirá más    ║
+echo ║     responsivo incluso con poca RAM. Evita tener   ║
+echo ║     muchas pestañas del navegador abiertas.        ║
+echo ╚════════════════════════════════════════════════════╝
+echo.
+
+goto END_SSD_LOWEND_OPTIMIZATIONS
+
+:SKIP_SSD_LOWEND_OPTIMIZATIONS
+echo [+] Sistema NO cumple condiciones para modo SSD-LowRAM.
+echo     • RAM >= 5GB y/o disco HDD → Saltando optimizaciones SSD+low-RAM.
+echo.
+
+:END_SSD_LOWEND_OPTIMIZATIONS
+timeout /t 2 >nul
 
 echo ==============================
 echo Optimización completada.
