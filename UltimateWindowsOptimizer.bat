@@ -1,4 +1,3 @@
-analiza y di ok
 @echo off
 title Optimizador de Windows 11 - Optimizacion Integral
 cls
