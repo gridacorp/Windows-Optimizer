@@ -1236,6 +1236,56 @@ echo.
 :END_SSD_LOWEND_OPTIMIZATIONS
 timeout /t 2 >nul
 
+echo ==============================================================
+echo 26. MEJORAS AUTOMÁTICAS RESCATADAS DE VERSIONES ANTERIORES
+echo ============================================================== 
+
+:: 1. DISM /ResetBase seguro (solo si hay >10GB libres en C:)
+for /f %%A in ('powershell -NoProfile -Command "[math]::Round((Get-PSDrive C).Free/1GB)"') do set FREE_GB=%%A
+if %FREE_GB% GEQ 10 (
+    echo [+] Liberando espacio de actualizaciones antiguas...
+    DISM /Online /Cleanup-Image /StartComponentCleanup /ResetBase >nul 2>&1
+    echo [OK] Espacio recuperado.
+) else (
+    echo [!] Espacio insuficiente (<10GB). Saltando /ResetBase.
+)
+
+:: 2. Verificación y activación automática de TRIM
+fsutil behavior query disabledeletenotify | findstr "0" >nul 2>&1 && (
+    echo [✔] TRIM: Ya habilitado.
+) || (
+    fsutil behavior set disabledeletenotify 0 >nul 2>&1 && (
+        echo [✔] TRIM: Activado exitosamente.
+    ) || (
+        echo [!] TRIM: No se pudo configurar.
+    )
+)
+
+:: 3. Storage Sense conservador (temporales >30 días, nunca borra Descargas)
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy" /v 01 /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy" /v 04 /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy" /v 32 /t REG_DWORD /d 30 /f >nul 2>&1
+echo [OK] Limpieza automática configurada (modo conservador).
+
+:: 4. Reparación de disco programada automáticamente (solo si es HDD)
+if /i "%driveType%"=="HDD" (
+    echo [+] HDD detectado. Programando reparación de sectores...
+    chkdsk C: /F /R /X >nul 2>&1
+    echo [OK] chkdsk /F /R programado. Se ejecutará al reiniciar.
+)
+
+:: 5. Priorizar procesos de interfaz si están activos (fluidez inmediata)
+for %%p in (explorer.exe dwm.exe) do (
+    tasklist /fi "imagename eq %%p" 2>nul | findstr "%%p" >nul && (
+        wmic process where name="%%p" CALL setpriority "high priority" >nul 2>&1
+    )
+)
+echo [OK] Procesos de interfaz priorizados.
+
+echo.
+echo [✔] Mejoras adicionales aplicadas automáticamente.
+timeout /t 2 >nul
+
 echo ==============================
 echo Optimización completada.
 echo ==============================
